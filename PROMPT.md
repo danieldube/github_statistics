@@ -61,3 +61,5 @@ Constraints and reminders:
 - Always keep Python 3.8+ compatibility in mind.
 
 Now, perform this process and present your complete, commit-ready changes for the next open step from `TASKS.md`.
+
+Don't start with the another step automatically; wait for the next instruction after this output.
