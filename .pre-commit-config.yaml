@@ -28,14 +28,14 @@ repos:
     rev: 24.1.1
     hooks:
       - id: black
-        args: [--line-length=100]
+        args: [--line-length=79]
 
   # Import sorting
   - repo: https://github.com/pycqa/isort
     rev: 5.13.2
     hooks:
       - id: isort
-        args: [--profile=black, --line-length=100]
+        args: [--profile=black, --line-length=79]
 
   # Ruff - Fast Python linter
   - repo: https://github.com/astral-sh/ruff-pre-commit

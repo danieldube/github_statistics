@@ -43,7 +43,9 @@ def test_parse_arguments_with_until():
 
 def test_parse_arguments_with_since_and_until():
     """Test parsing with both --since and --until."""
-    args = parse_arguments(["config.yaml", "--since", "2024-01-01", "--until", "2024-12-31"])
+    args = parse_arguments(
+        ["config.yaml", "--since", "2024-01-01", "--until", "2024-12-31"]
+    )
 
     assert args.since == "2024-01-01"
     assert args.until == "2024-12-31"
@@ -124,7 +126,9 @@ def test_create_run_options_minimal():
     assert options.until is None
     assert options.repositories == ["org/repo1", "org/repo2"]  # from config
     assert options.users == ["alice", "bob"]  # from config
-    assert options.output == "config_statistics.md"  # default based on config name
+    assert (
+        options.output == "config_statistics.md"
+    )  # default based on config name
     assert options.max_workers == 4
 
 
@@ -138,7 +142,9 @@ def test_create_run_options_with_date_range():
         users=["alice"],
     )
 
-    args = parse_arguments(["config.yaml", "--since", "2024-01-01", "--until", "2024-12-31"])
+    args = parse_arguments(
+        ["config.yaml", "--since", "2024-01-01", "--until", "2024-12-31"]
+    )
     options = RunOptions.from_config_and_args(config, args)
 
     assert options.since == datetime(2024, 1, 1)
@@ -284,7 +290,10 @@ def test_main_loads_config(tmp_path, monkeypatch, capsys):
     assert exit_code == 0
     captured = capsys.readouterr()
     # Should indicate it's stubbed
-    assert "Configuration loaded" in captured.out or "not yet fully implemented" in captured.out
+    assert (
+        "Configuration loaded" in captured.out
+        or "not yet fully implemented" in captured.out
+    )
 
 
 def test_main_with_cli_options(tmp_path, monkeypatch, capsys):
@@ -328,13 +337,17 @@ def test_main_with_cli_options(tmp_path, monkeypatch, capsys):
 
 def test_main_missing_config_file(monkeypatch, capsys):
     """Test that main() exits with error for missing config file."""
-    monkeypatch.setattr(sys, "argv", ["github_statistics", "/nonexistent/config.yaml"])
+    monkeypatch.setattr(
+        sys, "argv", ["github_statistics", "/nonexistent/config.yaml"]
+    )
 
     exit_code = main()
 
     assert exit_code != 0
     captured = capsys.readouterr()
-    assert "error" in captured.err.lower() or "not found" in captured.err.lower()
+    assert (
+        "error" in captured.err.lower() or "not found" in captured.err.lower()
+    )
 
 
 def test_main_invalid_date_exits_with_error(tmp_path, monkeypatch, capsys):
@@ -352,7 +365,14 @@ def test_main_invalid_date_exits_with_error(tmp_path, monkeypatch, capsys):
         yaml.dump(config_data, f)
 
     monkeypatch.setattr(
-        sys, "argv", ["github_statistics", str(config_file), "--since", "invalid-date-format"]
+        sys,
+        "argv",
+        [
+            "github_statistics",
+            str(config_file),
+            "--since",
+            "invalid-date-format",
+        ],
     )
 
     exit_code = main()

@@ -77,7 +77,7 @@ This project follows a strict test-driven development (TDD) approach:
 
 All commits must pass the following automated checks:
 
-- **Black** (code formatting, line length: 100)
+- **Black** (code formatting, line length: 79)
 - **isort** (import sorting)
 - **Ruff** (linting)
 - **mypy** (type checking)
@@ -87,7 +87,7 @@ All commits must pass the following automated checks:
 
 ### Code Style Guidelines
 
-- **Line length**: Maximum 100 characters
+- **Line length**: Maximum 79 characters (PEP 8 standard)
 - **Docstrings**: Use Google-style docstrings for all public functions, classes, and modules
 - **Type hints**: Add type hints where beneficial (especially for public APIs)
 - **Python version**: Code must be compatible with Python 3.8+

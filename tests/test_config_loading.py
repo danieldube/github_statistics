@@ -25,7 +25,9 @@ def test_load_minimal_valid_config():
         ],
     }
 
-    with tempfile.NamedTemporaryFile(mode="w", suffix=".yaml", delete=False) as f:
+    with tempfile.NamedTemporaryFile(
+        mode="w", suffix=".yaml", delete=False
+    ) as f:
         yaml.dump(config_data, f)
         config_path = f.name
 
@@ -59,7 +61,9 @@ def test_load_config_with_all_fields():
         ],
     }
 
-    with tempfile.NamedTemporaryFile(mode="w", suffix=".yaml", delete=False) as f:
+    with tempfile.NamedTemporaryFile(
+        mode="w", suffix=".yaml", delete=False
+    ) as f:
         yaml.dump(config_data, f)
         config_path = f.name
 
@@ -88,7 +92,9 @@ def test_normalize_repository_url_https():
         "users": ["user1"],
     }
 
-    with tempfile.NamedTemporaryFile(mode="w", suffix=".yaml", delete=False) as f:
+    with tempfile.NamedTemporaryFile(
+        mode="w", suffix=".yaml", delete=False
+    ) as f:
         yaml.dump(config_data, f)
         config_path = f.name
 
@@ -112,7 +118,9 @@ def test_normalize_repository_url_git():
         "users": ["user1"],
     }
 
-    with tempfile.NamedTemporaryFile(mode="w", suffix=".yaml", delete=False) as f:
+    with tempfile.NamedTemporaryFile(
+        mode="w", suffix=".yaml", delete=False
+    ) as f:
         yaml.dump(config_data, f)
         config_path = f.name
 
@@ -138,14 +146,20 @@ def test_normalize_repository_mixed_formats():
         "users": ["user1"],
     }
 
-    with tempfile.NamedTemporaryFile(mode="w", suffix=".yaml", delete=False) as f:
+    with tempfile.NamedTemporaryFile(
+        mode="w", suffix=".yaml", delete=False
+    ) as f:
         yaml.dump(config_data, f)
         config_path = f.name
 
     try:
         config = load_config(config_path)
 
-        assert config.repositories == ["org1/repo1", "org2/repo2", "org3/repo3"]
+        assert config.repositories == [
+            "org1/repo1",
+            "org2/repo2",
+            "org3/repo3",
+        ]
     finally:
         os.unlink(config_path)
 
@@ -164,7 +178,9 @@ def test_users_list_loaded_as_is():
         ],
     }
 
-    with tempfile.NamedTemporaryFile(mode="w", suffix=".yaml", delete=False) as f:
+    with tempfile.NamedTemporaryFile(
+        mode="w", suffix=".yaml", delete=False
+    ) as f:
         yaml.dump(config_data, f)
         config_path = f.name
 
@@ -186,7 +202,9 @@ def test_default_token_env():
         "users": ["user1"],
     }
 
-    with tempfile.NamedTemporaryFile(mode="w", suffix=".yaml", delete=False) as f:
+    with tempfile.NamedTemporaryFile(
+        mode="w", suffix=".yaml", delete=False
+    ) as f:
         yaml.dump(config_data, f)
         config_path = f.name
 
@@ -208,7 +226,9 @@ def test_default_verify_ssl():
         "users": ["user1"],
     }
 
-    with tempfile.NamedTemporaryFile(mode="w", suffix=".yaml", delete=False) as f:
+    with tempfile.NamedTemporaryFile(
+        mode="w", suffix=".yaml", delete=False
+    ) as f:
         yaml.dump(config_data, f)
         config_path = f.name
 
@@ -231,7 +251,9 @@ def test_missing_base_url_raises_error():
         "users": ["user1"],
     }
 
-    with tempfile.NamedTemporaryFile(mode="w", suffix=".yaml", delete=False) as f:
+    with tempfile.NamedTemporaryFile(
+        mode="w", suffix=".yaml", delete=False
+    ) as f:
         yaml.dump(config_data, f)
         config_path = f.name
 
@@ -250,7 +272,9 @@ def test_missing_github_section_raises_error():
         "users": ["user1"],
     }
 
-    with tempfile.NamedTemporaryFile(mode="w", suffix=".yaml", delete=False) as f:
+    with tempfile.NamedTemporaryFile(
+        mode="w", suffix=".yaml", delete=False
+    ) as f:
         yaml.dump(config_data, f)
         config_path = f.name
 
@@ -271,7 +295,9 @@ def test_empty_repositories_raises_error():
         "users": ["user1"],
     }
 
-    with tempfile.NamedTemporaryFile(mode="w", suffix=".yaml", delete=False) as f:
+    with tempfile.NamedTemporaryFile(
+        mode="w", suffix=".yaml", delete=False
+    ) as f:
         yaml.dump(config_data, f)
         config_path = f.name
 
@@ -292,12 +318,16 @@ def test_missing_repositories_raises_error():
         "users": ["user1"],
     }
 
-    with tempfile.NamedTemporaryFile(mode="w", suffix=".yaml", delete=False) as f:
+    with tempfile.NamedTemporaryFile(
+        mode="w", suffix=".yaml", delete=False
+    ) as f:
         yaml.dump(config_data, f)
         config_path = f.name
 
     try:
-        with pytest.raises(ConfigValidationError, match="repositories.*required"):
+        with pytest.raises(
+            ConfigValidationError, match="repositories.*required"
+        ):
             load_config(config_path)
     finally:
         os.unlink(config_path)
@@ -313,7 +343,9 @@ def test_empty_users_allowed():
         "users": [],  # empty is OK
     }
 
-    with tempfile.NamedTemporaryFile(mode="w", suffix=".yaml", delete=False) as f:
+    with tempfile.NamedTemporaryFile(
+        mode="w", suffix=".yaml", delete=False
+    ) as f:
         yaml.dump(config_data, f)
         config_path = f.name
 
@@ -335,7 +367,9 @@ def test_missing_users_defaults_to_empty():
         # users missing
     }
 
-    with tempfile.NamedTemporaryFile(mode="w", suffix=".yaml", delete=False) as f:
+    with tempfile.NamedTemporaryFile(
+        mode="w", suffix=".yaml", delete=False
+    ) as f:
         yaml.dump(config_data, f)
         config_path = f.name
 
@@ -372,7 +406,9 @@ def test_file_not_found():
 
 def test_invalid_yaml():
     """Test that invalid YAML syntax raises an appropriate error."""
-    with tempfile.NamedTemporaryFile(mode="w", suffix=".yaml", delete=False) as f:
+    with tempfile.NamedTemporaryFile(
+        mode="w", suffix=".yaml", delete=False
+    ) as f:
         f.write("invalid: yaml: content: [unclosed")
         config_path = f.name
 

@@ -60,7 +60,9 @@ def normalize_repository(repo_identifier: str) -> str:
         return git_match.group(1)
 
     # Handle HTTPS URLs: https://github.com/owner/repo
-    https_match = re.match(r"^https?://[^/]+/(.+?)(?:\.git)?$", repo_identifier)
+    https_match = re.match(
+        r"^https?://[^/]+/(.+?)(?:\.git)?$", repo_identifier
+    )
     if https_match:
         return https_match.group(1)
 
@@ -87,11 +89,15 @@ def load_config(path: str) -> Config:
         data = yaml.safe_load(f)
 
     if not isinstance(data, dict):
-        raise ConfigValidationError("Configuration file must contain a YAML dictionary")
+        raise ConfigValidationError(
+            "Configuration file must contain a YAML dictionary"
+        )
 
     # Validate github section
     if "github" not in data:
-        raise ConfigValidationError("Configuration must contain 'github' section (required)")
+        raise ConfigValidationError(
+            "Configuration must contain 'github' section (required)"
+        )
 
     github_config = data["github"]
     if not isinstance(github_config, dict):
@@ -109,7 +115,9 @@ def load_config(path: str) -> Config:
 
     # Validate repositories
     if "repositories" not in data:
-        raise ConfigValidationError("Configuration must contain 'repositories' field (required)")
+        raise ConfigValidationError(
+            "Configuration must contain 'repositories' field (required)"
+        )
 
     repositories = data["repositories"]
     if not isinstance(repositories, list):

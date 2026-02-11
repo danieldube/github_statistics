@@ -76,7 +76,9 @@ class RunOptions:
         if args.repos:
             cli_repos = [repo.strip() for repo in args.repos.split(",")]
             # Keep only repos that are in both config and CLI filter
-            repositories = [repo for repo in config.repositories if repo in cli_repos]
+            repositories = [
+                repo for repo in config.repositories if repo in cli_repos
+            ]
 
         # Handle user filtering
         # CLI --users overrides config users
@@ -88,7 +90,9 @@ class RunOptions:
         output = args.output
         if output is None:
             # Default: <config_basename>_statistics.md
-            config_basename = os.path.splitext(os.path.basename(args.config_path))[0]
+            config_basename = os.path.splitext(
+                os.path.basename(args.config_path)
+            )[0]
             output = f"{config_basename}_statistics.md"
 
         return RunOptions(
@@ -117,18 +121,26 @@ def parse_arguments(args: List[str]):
         description="Compute pull request statistics from GitHub Enterprise.",
     )
 
-    parser.add_argument("config_path", help="Path to the YAML configuration file")
-
     parser.add_argument(
-        "--since", help="Start date for PR filtering (ISO format: YYYY-MM-DD)", default=None
+        "config_path", help="Path to the YAML configuration file"
     )
 
     parser.add_argument(
-        "--until", help="End date for PR filtering (ISO format: YYYY-MM-DD)", default=None
+        "--since",
+        help="Start date for PR filtering (ISO format: YYYY-MM-DD)",
+        default=None,
     )
 
     parser.add_argument(
-        "--users", help="Comma-separated list of users to analyze (overrides config)", default=None
+        "--until",
+        help="End date for PR filtering (ISO format: YYYY-MM-DD)",
+        default=None,
+    )
+
+    parser.add_argument(
+        "--users",
+        help="Comma-separated list of users to analyze (overrides config)",
+        default=None,
     )
 
     parser.add_argument(
@@ -167,10 +179,15 @@ def main():
         try:
             config = load_config(args.config_path)
         except FileNotFoundError:
-            print(f"Error: Configuration file not found: {args.config_path}", file=sys.stderr)
+            print(
+                f"Error: Configuration file not found: {args.config_path}",
+                file=sys.stderr,
+            )
             return 1
         except ConfigValidationError as e:
-            print(f"Error: Configuration validation failed: {e}", file=sys.stderr)
+            print(
+                f"Error: Configuration validation failed: {e}", file=sys.stderr
+            )
             return 1
 
         # Create runtime options

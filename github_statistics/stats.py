@@ -15,7 +15,9 @@ def compute_repository_stats(_pull_requests):
 
     This function will be implemented in Step 7.
     """
-    raise NotImplementedError("compute_repository_stats will be implemented in Step 7")
+    raise NotImplementedError(
+        "compute_repository_stats will be implemented in Step 7"
+    )
 
 
 def compute_user_stats(_pull_requests):
@@ -29,4 +31,6 @@ def compute_user_stats(_pull_requests):
 
     This function will be implemented in Step 7.
     """
-    raise NotImplementedError("compute_user_stats will be implemented in Step 7")
+    raise NotImplementedError(
+        "compute_user_stats will be implemented in Step 7"
+    )

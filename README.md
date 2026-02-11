@@ -93,7 +93,7 @@ pytest --cov=github_statistics --cov-report=html
 
 This project uses pre-commit hooks to maintain code quality. All commits must pass the following checks:
 
-- **Black**: Code formatting (line length: 100)
+- **Black**: Code formatting (line length: 79)
 - **isort**: Import sorting
 - **Ruff**: Fast Python linter
 - **mypy**: Static type checking

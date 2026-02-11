@@ -197,7 +197,7 @@ The tool must:
     - End-to-end run against mocked GitHub API (e.g., using `responses` or `httpx` mocking).
 - Ensure coverage for Python 3.8+.
 - Integrate static checks and code quality tools:
-  - `black` for code formatting (line length: 100).
+  - `black` for code formatting (line length: 79).
   - `ruff` for fast linting and style checks.
   - `mypy` for type checking.
   - `isort` for import sorting.
@@ -240,7 +240,7 @@ The following checks run automatically on every commit:
    - Detect debug statements
    - Ensure consistent line endings (LF)
 
-2. **Black** - Code formatting (line length: 100, Python 3.8+)
+2. **Black** - Code formatting (line length: 79, Python 3.8+)
    - Automatically formats Python code to ensure consistency
 
 3. **isort** - Import sorting
