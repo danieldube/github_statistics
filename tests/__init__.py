@@ -1,4 +1,1 @@
-"""
-Test package initialization.
-"""
-
+"""Tests for github_statistics package."""

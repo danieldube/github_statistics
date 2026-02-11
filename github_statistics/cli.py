@@ -1,6 +1,7 @@
 """
 Command-line interface for github_statistics.
 """
+
 import argparse
 import os
 import sys
@@ -8,7 +9,7 @@ from dataclasses import dataclass
 from datetime import datetime
 from typing import List, Optional
 
-from github_statistics.config import Config, load_config, ConfigValidationError
+from github_statistics.config import Config, ConfigValidationError, load_config
 
 
 @dataclass
@@ -25,6 +26,7 @@ class RunOptions:
         output: Path to the output Markdown file.
         max_workers: Maximum number of concurrent workers.
     """
+
     config: Config
     since: Optional[datetime]
     until: Optional[datetime]
@@ -34,7 +36,7 @@ class RunOptions:
     max_workers: int
 
     @staticmethod
-    def from_config_and_args(config: Config, args) -> 'RunOptions':
+    def from_config_and_args(config: Config, args) -> "RunOptions":
         """
         Create RunOptions from a Config object and parsed CLI arguments.
 
@@ -55,20 +57,24 @@ class RunOptions:
         if args.since:
             try:
                 since = datetime.fromisoformat(args.since)
-            except ValueError:
-                raise ValueError(f"Invalid date format for --since: '{args.since}'. Expected ISO format (YYYY-MM-DD).")
+            except ValueError as e:
+                raise ValueError(
+                    f"Invalid date format for --since: '{args.since}'. Expected ISO format (YYYY-MM-DD)."
+                ) from e
 
         if args.until:
             try:
                 until = datetime.fromisoformat(args.until)
-            except ValueError:
-                raise ValueError(f"Invalid date format for --until: '{args.until}'. Expected ISO format (YYYY-MM-DD).")
+            except ValueError as e:
+                raise ValueError(
+                    f"Invalid date format for --until: '{args.until}'. Expected ISO format (YYYY-MM-DD)."
+                ) from e
 
         # Handle repository filtering
         # CLI --repos narrows the config repositories (intersection)
         repositories = config.repositories
         if args.repos:
-            cli_repos = [repo.strip() for repo in args.repos.split(',')]
+            cli_repos = [repo.strip() for repo in args.repos.split(",")]
             # Keep only repos that are in both config and CLI filter
             repositories = [repo for repo in config.repositories if repo in cli_repos]
 
@@ -76,7 +82,7 @@ class RunOptions:
         # CLI --users overrides config users
         users = config.users
         if args.users:
-            users = [user.strip() for user in args.users.split(',')]
+            users = [user.strip() for user in args.users.split(",")]
 
         # Determine output filename
         output = args.output
@@ -92,7 +98,7 @@ class RunOptions:
             repositories=repositories,
             users=users,
             output=output,
-            max_workers=args.max_workers
+            max_workers=args.max_workers,
         )
 
 
@@ -107,58 +113,48 @@ def parse_arguments(args: List[str]):
         Parsed arguments namespace.
     """
     parser = argparse.ArgumentParser(
-        prog='github_statistics',
-        description='Compute pull request statistics from GitHub Enterprise.'
+        prog="github_statistics",
+        description="Compute pull request statistics from GitHub Enterprise.",
+    )
+
+    parser.add_argument("config_path", help="Path to the YAML configuration file")
+
+    parser.add_argument(
+        "--since", help="Start date for PR filtering (ISO format: YYYY-MM-DD)", default=None
     )
 
     parser.add_argument(
-        'config_path',
-        help='Path to the YAML configuration file'
+        "--until", help="End date for PR filtering (ISO format: YYYY-MM-DD)", default=None
     )
 
     parser.add_argument(
-        '--since',
-        help='Start date for PR filtering (ISO format: YYYY-MM-DD)',
-        default=None
+        "--users", help="Comma-separated list of users to analyze (overrides config)", default=None
     )
 
     parser.add_argument(
-        '--until',
-        help='End date for PR filtering (ISO format: YYYY-MM-DD)',
-        default=None
+        "--repos",
+        help="Comma-separated list of repositories to analyze (narrows config)",
+        default=None,
     )
 
     parser.add_argument(
-        '--users',
-        help='Comma-separated list of users to analyze (overrides config)',
-        default=None
+        "--output",
+        help="Path to output Markdown file (default: <config_basename>_statistics.md)",
+        default=None,
     )
 
     parser.add_argument(
-        '--repos',
-        help='Comma-separated list of repositories to analyze (narrows config)',
-        default=None
-    )
-
-    parser.add_argument(
-        '--output',
-        help='Path to output Markdown file (default: <config_basename>_statistics.md)',
-        default=None
-    )
-
-    parser.add_argument(
-        '--max-workers',
+        "--max-workers",
         type=int,
         default=4,
-        help='Maximum number of concurrent workers (default: 4)'
+        help="Maximum number of concurrent workers (default: 4)",
     )
 
     return parser.parse_args(args)
 
 
 def main():
-    """
-    Entry point for the github_statistics CLI.
+    """Entry point for the github_statistics CLI.
 
     Returns:
         Exit code (0 for success, non-zero for error).
@@ -206,4 +202,3 @@ def main():
 
 if __name__ == "__main__":
     sys.exit(main())
-

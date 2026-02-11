@@ -3,14 +3,13 @@ Markdown report generation.
 """
 
 
-def render_report(repos_stats, users_stats, options):
-    """
-    Generate a Markdown report from statistics.
+def render_report(_repos_stats, _users_stats, _options):
+    """Generate a Markdown report from statistics.
 
     Args:
-        repos_stats: Repository statistics.
-        users_stats: User statistics dictionary.
-        options: Runtime options and metadata.
+        _repos_stats: Repository statistics.
+        _users_stats: User statistics dictionary.
+        _options: Runtime options and metadata.
 
     Returns:
         Markdown string.
@@ -18,4 +17,3 @@ def render_report(repos_stats, users_stats, options):
     This function will be implemented in Step 9.
     """
     raise NotImplementedError("render_report will be implemented in Step 9")
-

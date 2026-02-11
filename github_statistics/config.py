@@ -1,14 +1,17 @@
 """
 Configuration loading and validation.
 """
+
 import re
 from dataclasses import dataclass
 from typing import List
+
 import yaml
 
 
 class ConfigValidationError(Exception):
     """Exception raised when configuration validation fails."""
+
     pass
 
 
@@ -24,6 +27,7 @@ class Config:
         repositories: List of repository identifiers in owner/repo format.
         users: List of usernames to analyze.
     """
+
     github_base_url: str
     github_token_env: str
     github_verify_ssl: bool
@@ -48,15 +52,15 @@ def normalize_repository(repo_identifier: str) -> str:
         Normalized owner/repo string.
     """
     # Remove trailing slashes
-    repo_identifier = repo_identifier.rstrip('/')
+    repo_identifier = repo_identifier.rstrip("/")
 
     # Handle git@ style URLs: git@github.com:owner/repo.git
-    git_match = re.match(r'^git@[^:]+:(.+?)(?:\.git)?$', repo_identifier)
+    git_match = re.match(r"^git@[^:]+:(.+?)(?:\.git)?$", repo_identifier)
     if git_match:
         return git_match.group(1)
 
     # Handle HTTPS URLs: https://github.com/owner/repo
-    https_match = re.match(r'^https?://[^/]+/(.+?)(?:\.git)?$', repo_identifier)
+    https_match = re.match(r"^https?://[^/]+/(.+?)(?:\.git)?$", repo_identifier)
     if https_match:
         return https_match.group(1)
 
@@ -65,8 +69,7 @@ def normalize_repository(repo_identifier: str) -> str:
 
 
 def load_config(path: str) -> Config:
-    """
-    Load configuration from a YAML file.
+    """Load configuration from a YAML file.
 
     Args:
         path: Path to the configuration YAML file.
@@ -80,35 +83,35 @@ def load_config(path: str) -> Config:
         ConfigValidationError: If required fields are missing or invalid.
     """
     # Read and parse YAML
-    with open(path, 'r') as f:
+    with open(path) as f:
         data = yaml.safe_load(f)
 
     if not isinstance(data, dict):
         raise ConfigValidationError("Configuration file must contain a YAML dictionary")
 
     # Validate github section
-    if 'github' not in data:
+    if "github" not in data:
         raise ConfigValidationError("Configuration must contain 'github' section (required)")
 
-    github_config = data['github']
+    github_config = data["github"]
     if not isinstance(github_config, dict):
         raise ConfigValidationError("'github' section must be a dictionary")
 
     # Validate and extract github.base_url
-    if 'base_url' not in github_config:
+    if "base_url" not in github_config:
         raise ConfigValidationError("github.base_url is required")
 
-    github_base_url = github_config['base_url']
+    github_base_url = github_config["base_url"]
 
     # Apply defaults for optional github fields
-    github_token_env = github_config.get('token_env', 'GITHUB_TOKEN')
-    github_verify_ssl = github_config.get('verify_ssl', True)
+    github_token_env = github_config.get("token_env", "GITHUB_TOKEN")
+    github_verify_ssl = github_config.get("verify_ssl", True)
 
     # Validate repositories
-    if 'repositories' not in data:
+    if "repositories" not in data:
         raise ConfigValidationError("Configuration must contain 'repositories' field (required)")
 
-    repositories = data['repositories']
+    repositories = data["repositories"]
     if not isinstance(repositories, list):
         raise ConfigValidationError("'repositories' must be a list")
 
@@ -119,7 +122,7 @@ def load_config(path: str) -> Config:
     normalized_repos = [normalize_repository(repo) for repo in repositories]
 
     # Handle users (optional, defaults to empty list)
-    users = data.get('users', [])
+    users = data.get("users", [])
     if not isinstance(users, list):
         raise ConfigValidationError("'users' must be a list")
 
@@ -128,6 +131,5 @@ def load_config(path: str) -> Config:
         github_token_env=github_token_env,
         github_verify_ssl=github_verify_ssl,
         repositories=normalized_repos,
-        users=users
+        users=users,
     )
-
