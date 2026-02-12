@@ -32,6 +32,8 @@ def test_can_import_github_client():
 
     assert github_statistics.github_client is not None
     assert hasattr(github_statistics.github_client, "GitHubClient")
+    assert hasattr(github_statistics.github_client, "HttpGitHubClient")
+    assert hasattr(github_statistics.github_client, "FakeGitHubClient")
 
 
 def test_can_import_models():

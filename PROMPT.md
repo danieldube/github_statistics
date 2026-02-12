@@ -51,17 +51,6 @@ D. Output format
 - First, briefly summarize:
   - Which step from `TASKS.md` you implemented.
   - The acceptance criteria you used.
-- Then provide a **patch-style description of changes**, grouped by file:
-  - For each affected file, output the **full final content** of the file (not a diff), inside a fenced code block labeled with the path, for example:
-    - `# File: github_statistics/config.py`
-
-    - ```python
-
-         <full file content>
-         ```
-
-  - Include all new/modified test files under `tests/`.
-  - Include any new/modified project files under `github_statistics/` and any relevant top-level files (e.g., `pyproject.toml`, `README.md`) if they are part of this step.
 
 Constraints and reminders:
 
