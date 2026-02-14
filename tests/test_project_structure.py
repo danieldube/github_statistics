@@ -58,6 +58,9 @@ def test_can_import_stats():
     assert github_statistics.stats is not None
     assert hasattr(github_statistics.stats, "compute_repository_stats")
     assert hasattr(github_statistics.stats, "compute_user_stats")
+    assert hasattr(github_statistics.stats, "Distribution")
+    assert hasattr(github_statistics.stats, "RepositoryStats")
+    assert hasattr(github_statistics.stats, "UserStats")
 
 
 def test_can_import_report_md():
