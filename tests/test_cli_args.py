@@ -2,6 +2,7 @@
 Tests for CLI argument parsing and handling.
 """
 
+import os
 import sys
 from datetime import datetime
 
@@ -126,9 +127,8 @@ def test_create_run_options_minimal():
     assert options.until is None
     assert options.repositories == ["org/repo1", "org/repo2"]  # from config
     assert options.users == ["alice", "bob"]  # from config
-    assert (
-        options.output == "config_statistics.md"
-    )  # default based on config name
+    # Output is now an absolute path, check basename
+    assert os.path.basename(options.output) == "config_statistics.md"
     assert options.max_workers == 4
 
 
@@ -268,6 +268,8 @@ def test_invalid_date_format_until():
 
 def test_main_loads_config(tmp_path, monkeypatch, capsys):
     """Test that main() loads configuration using load_config."""
+    from unittest.mock import MagicMock, patch
+
     # Create a temporary config file
     config_data = {
         "github": {
@@ -284,20 +286,29 @@ def test_main_loads_config(tmp_path, monkeypatch, capsys):
     # Mock sys.argv
     monkeypatch.setattr(sys, "argv", ["github_statistics", str(config_file)])
 
-    # Run main - it should load config and print a message (not crash)
-    exit_code = main()
+    # Mock the HttpGitHubClient so we don't need a real token
+    with patch(
+        "github_statistics.github_client.HttpGitHubClient"
+    ) as mock_client_class:
+        mock_client = MagicMock()
+        mock_client_class.from_env.return_value = mock_client
+        mock_client.list_pull_requests.return_value = []
+
+        # Mock environment variable
+        monkeypatch.setenv("GITHUB_TOKEN", "fake_token")
+
+        # Run main - it should load config and complete successfully
+        exit_code = main()
 
     assert exit_code == 0
     captured = capsys.readouterr()
-    # Should indicate it's stubbed
-    assert (
-        "Configuration loaded" in captured.out
-        or "not yet fully implemented" in captured.out
-    )
+    assert "Configuration loaded" in captured.out
 
 
 def test_main_with_cli_options(tmp_path, monkeypatch, capsys):
     """Test that main() handles CLI options correctly."""
+    from unittest.mock import MagicMock, patch
+
     config_data = {
         "github": {
             "base_url": "https://github.mycompany.com/api/v3",
@@ -330,7 +341,18 @@ def test_main_with_cli_options(tmp_path, monkeypatch, capsys):
         ],
     )
 
-    exit_code = main()
+    # Mock the HttpGitHubClient
+    with patch(
+        "github_statistics.github_client.HttpGitHubClient"
+    ) as mock_client_class:
+        mock_client = MagicMock()
+        mock_client_class.from_env.return_value = mock_client
+        mock_client.list_pull_requests.return_value = []
+
+        # Mock environment variable
+        monkeypatch.setenv("GITHUB_TOKEN", "fake_token")
+
+        exit_code = main()
 
     assert exit_code == 0
 
@@ -392,20 +414,21 @@ def test_default_output_filename(tmp_path):
         users=["alice"],
     )
 
-    # Test with simple filename
+    # Test with simple filename - output is now absolute path, check basename
     args = parse_arguments(["my_config.yaml"])
     options = RunOptions.from_config_and_args(config, args)
-    assert options.output == "my_config_statistics.md"
+    assert os.path.basename(options.output) == "my_config_statistics.md"
 
-    # Test with path
+    # Test with path - output should be in same directory as input
     args = parse_arguments(["/path/to/project_config.yaml"])
     options = RunOptions.from_config_and_args(config, args)
-    assert options.output == "project_config_statistics.md"
+    assert os.path.basename(options.output) == "project_config_statistics.md"
+    assert os.path.dirname(options.output) == "/path/to"
 
     # Test with .yml extension
     args = parse_arguments(["config.yml"])
     options = RunOptions.from_config_and_args(config, args)
-    assert options.output == "config_statistics.md"
+    assert os.path.basename(options.output) == "config_statistics.md"
 
 
 def test_run_options_dataclass():

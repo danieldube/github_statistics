@@ -89,11 +89,14 @@ class RunOptions:
         # Determine output filename
         output = args.output
         if output is None:
-            # Default: <config_basename>_statistics.md
+            # Default: <config_basename>_statistics.md in same dir as config
+            config_dir = os.path.dirname(os.path.abspath(args.config_path))
             config_basename = os.path.splitext(
                 os.path.basename(args.config_path)
             )[0]
-            output = f"{config_basename}_statistics.md"
+            output = os.path.join(
+                config_dir, f"{config_basename}_statistics.md"
+            )
 
         return RunOptions(
             config=config,
@@ -197,7 +200,7 @@ def main():
             print(f"Error: {e}", file=sys.stderr)
             return 1
 
-        # Print confirmation (actual execution will be implemented in later steps)
+        # Print progress
         print("Configuration loaded successfully.")
         print(f"  Repositories: {len(options.repositories)}")
         print(f"  Users: {len(options.users)}")
@@ -207,13 +210,99 @@ def main():
             print(f"  Until: {options.until.date()}")
         print(f"  Output: {options.output}")
         print(f"  Max workers: {options.max_workers}")
-        print("\nData collection and analysis not yet fully implemented.")
-        print("This functionality will be added in subsequent steps.")
+        print()
+
+        # Import modules (deferred to avoid import errors in early steps)
+        from github_statistics.collector import collect_prs
+        from github_statistics.github_client import HttpGitHubClient
+        from github_statistics.report_md import render_report
+        from github_statistics.stats import (
+            compute_repository_stats,
+            compute_user_stats,
+        )
+
+        # Instantiate GitHub client
+        print("Initializing GitHub client...")
+        try:
+            client = HttpGitHubClient.from_env(
+                base_url=config.github_base_url,
+                token_env=config.github_token_env,
+                verify_ssl=config.github_verify_ssl,
+            )
+        except ValueError as e:
+            print(
+                f"Error: Failed to initialize GitHub client: {e}",
+                file=sys.stderr,
+            )
+            return 1
+
+        # Collect pull requests
+        print("Collecting pull requests...")
+        try:
+            pull_requests = collect_prs(config, options, client)
+            print(f"  Collected {len(pull_requests)} pull requests")
+        except Exception as e:
+            print(
+                f"Error: Failed to collect pull requests: {e}",
+                file=sys.stderr,
+            )
+            return 1
+
+        # Compute statistics
+        print("Computing statistics...")
+        try:
+            # Compute repository-level stats
+            # For simplicity, compute stats for all PRs together
+            # (PRs don't carry repo info, so we compute for all repos combined)
+            repos_stats = {}
+            repo_stats = compute_repository_stats(
+                pull_requests, until=options.until
+            )
+
+            # Store with a key - if multiple repos, we could iterate
+            # For now, store as "All repositories" or per repo if needed
+            if len(options.repositories) == 1:
+                repos_stats[options.repositories[0]] = repo_stats
+            else:
+                repos_stats["All repositories"] = repo_stats
+
+            user_stats = compute_user_stats(pull_requests)
+            print(
+                f"  Computed stats for {len(repos_stats)} repository group(s)"
+            )
+            print(f"  Computed stats for {len(user_stats)} user(s)")
+        except Exception as e:
+            print(f"Error: Failed to compute statistics: {e}", file=sys.stderr)
+            return 1
+
+        # Generate report
+        print("Generating report...")
+        try:
+            report = render_report(repos_stats, user_stats, options)
+        except Exception as e:
+            print(f"Error: Failed to generate report: {e}", file=sys.stderr)
+            return 1
+
+        # Write report to file
+        print(f"Writing report to {options.output}...")
+        try:
+            with open(options.output, "w") as f:
+                f.write(report)
+            print(f"Report successfully written to {options.output}")
+        except Exception as e:
+            print(f"Error: Failed to write report: {e}", file=sys.stderr)
+            return 1
 
         return 0
 
+    except KeyboardInterrupt:
+        print("\nOperation cancelled by user.", file=sys.stderr)
+        return 130
     except Exception as e:
         print(f"Error: Unexpected error: {e}", file=sys.stderr)
+        import traceback
+
+        traceback.print_exc()
         return 1
 
 
