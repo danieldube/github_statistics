@@ -61,6 +61,9 @@ def test_can_import_stats():
     assert hasattr(github_statistics.stats, "Distribution")
     assert hasattr(github_statistics.stats, "RepositoryStats")
     assert hasattr(github_statistics.stats, "UserStats")
+    assert hasattr(
+        github_statistics.stats, "classify_commits_requested_vs_unrequested"
+    )
 
 
 def test_can_import_report_md():

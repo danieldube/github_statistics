@@ -9,7 +9,7 @@ Uses Python standard library (statistics, datetime) for calculations.
 import statistics
 from dataclasses import dataclass
 from datetime import datetime, timezone
-from typing import Dict, List, Optional
+from typing import Dict, List, Optional, Tuple
 
 from github_statistics.models import PullRequest
 
@@ -129,6 +129,125 @@ def _hours_between(start: datetime, end: datetime) -> float:
     """
     delta = end - start
     return delta.total_seconds() / 3600.0  # seconds per hour
+
+
+def classify_commits_requested_vs_unrequested(
+    pr: PullRequest,
+) -> Tuple[int, int]:
+    """Classify commits after ready-for-review as requested or unrequested.
+
+    This is a heuristic metric that attempts to distinguish between:
+    - Requested commits: Made in response to CHANGES_REQUESTED reviews
+    - Unrequested commits: Made without being associated with review feedback
+
+    The classification follows this state machine:
+    1. Only commits after ready_for_review_at are considered
+    2. Only commits by the PR author are counted
+    3. A CHANGES_REQUESTED review opens a "requested cycle"
+    4. A requested cycle is closed by:
+       - A subsequent review request for the same reviewer
+       - An APPROVED review from the same reviewer
+    5. Commits during an open cycle are "requested"
+    6. Commits outside any cycle are "unrequested"
+
+    Limitations:
+    - If ready_for_review_at is None, returns (0, 0)
+    - Assumes review state transitions follow GitHub conventions
+    - Cannot distinguish between fixing requested changes vs unrelated work
+      during an open cycle
+
+    Args:
+        pr: PullRequest object with commits, reviews, and events.
+
+    Returns:
+        Tuple of (requested_commits, unrequested_commits) counts.
+    """
+    # Cannot classify without ready-for-review event
+    if pr.ready_for_review_at is None:
+        return (0, 0)
+
+    ready_time = pr.ready_for_review_at.ready_at
+
+    # Filter commits: only by PR author and after ready-for-review
+    relevant_commits = [
+        c
+        for c in pr.commits
+        if c.author == pr.author and c.committed_at > ready_time
+    ]
+
+    if not relevant_commits:
+        return (0, 0)
+
+    # Sort commits by time
+    sorted_commits = sorted(relevant_commits, key=lambda c: c.committed_at)
+
+    # Track CHANGES_REQUESTED cycles
+    # A cycle is (reviewer, start_time, end_time or None if open)
+    requested_cycles = []
+
+    # Build cycles from reviews
+    for review in pr.reviews:
+        if review.state == "CHANGES_REQUESTED":
+            reviewer = review.reviewer
+            start_time = review.submitted_at
+
+            # Find when this cycle closes
+            end_time = None
+
+            # Check for subsequent review request to same reviewer
+            later_requests = [
+                rr
+                for rr in pr.review_requests
+                if rr.requested_reviewer == reviewer
+                and rr.requested_at > start_time
+            ]
+            if later_requests:
+                earliest_request = min(
+                    later_requests, key=lambda r: r.requested_at
+                )
+                end_time = earliest_request.requested_at
+
+            # Check for subsequent APPROVED review from same reviewer
+            later_approvals = [
+                r
+                for r in pr.reviews
+                if r.reviewer == reviewer
+                and r.submitted_at > start_time
+                and r.state == "APPROVED"
+            ]
+            if later_approvals:
+                earliest_approval = min(
+                    later_approvals, key=lambda r: r.submitted_at
+                )
+                # Use earliest of review request or approval
+                if (
+                    end_time is None
+                    or earliest_approval.submitted_at < end_time
+                ):
+                    end_time = earliest_approval.submitted_at
+
+            requested_cycles.append((reviewer, start_time, end_time))
+
+    # Classify each commit
+    requested_count = 0
+    unrequested_count = 0
+
+    for commit in sorted_commits:
+        # Check if commit falls within any requested cycle
+        is_requested = False
+        for _, start_time, end_time in requested_cycles:
+            if commit.committed_at > start_time and (
+                end_time is None or commit.committed_at < end_time
+            ):
+                is_requested = True
+                break
+
+        if is_requested:
+            requested_count += 1
+        else:
+            unrequested_count += 1
+
+    return (requested_count, unrequested_count)
 
 
 def compute_repository_stats(
@@ -259,8 +378,8 @@ def compute_user_stats(
         if username not in user_data:
             user_data[username] = {
                 "review_times": [],
-                "total_reviews": 0,
-                "changes_requested_count": 0,
+                "prs_reviewed": 0,
+                "prs_with_changes_requested": 0,
                 "direct_approval_count": 0,
                 "loc_values": [],
                 "comments_as_reviewer": [],
@@ -284,17 +403,6 @@ def compute_user_stats(
                 user_data[pr.author]["comments_as_author"].append(
                     comments_per_100
                 )
-
-        # Process reviews
-        for review in pr.reviews:
-            _init_user(review.reviewer)
-
-            # Count total reviews
-            user_data[review.reviewer]["total_reviews"] += 1
-
-            # Count changes requested
-            if review.state == "CHANGES_REQUESTED":
-                user_data[review.reviewer]["changes_requested_count"] += 1
 
         # Process review timing
         for review_request in pr.review_requests:
@@ -329,11 +437,20 @@ def compute_user_stats(
 
         for reviewer, reviews in pr_reviewer_reviews.items():
             _init_user(reviewer)
+
+            # Count this PR as reviewed
+            user_data[reviewer]["prs_reviewed"] += 1
+
             # Sort by submission time
             sorted_reviews = sorted(reviews, key=lambda r: r.submitted_at)
+
             # Check if first review is APPROVED
             if sorted_reviews[0].state == "APPROVED":
                 user_data[reviewer]["direct_approval_count"] += 1
+
+            # Check if any review is CHANGES_REQUESTED
+            if any(r.state == "CHANGES_REQUESTED" for r in reviews):
+                user_data[reviewer]["prs_with_changes_requested"] += 1
 
         # Comments per 100 LOC as reviewer
         if total_loc > 0:
@@ -356,14 +473,14 @@ def compute_user_stats(
     result: Dict[str, UserStats] = {}
 
     for username, data in user_data.items():
-        # Calculate rates
-        total_reviews = data["total_reviews"]
-        if total_reviews > 0:
+        # Calculate rates based on PRs reviewed (not individual reviews)
+        prs_reviewed = data["prs_reviewed"]
+        if prs_reviewed > 0:
             changes_requested_rate = (
-                data["changes_requested_count"] / total_reviews
+                data["prs_with_changes_requested"] / prs_reviewed
             ) * 100.0
             direct_approval_rate = (
-                data["direct_approval_count"] / total_reviews
+                data["direct_approval_count"] / prs_reviewed
             ) * 100.0
         else:
             changes_requested_rate = 0.0
