@@ -321,6 +321,9 @@ def test_main_with_cli_options(tmp_path, monkeypatch, capsys):
     with open(config_file, "w") as f:
         yaml.dump(config_data, f)
 
+    # Use custom output in tmp_path to avoid creating files in project root
+    custom_output = str(tmp_path / "custom.md")
+
     # Mock sys.argv with options
     monkeypatch.setattr(
         sys,
@@ -337,7 +340,7 @@ def test_main_with_cli_options(tmp_path, monkeypatch, capsys):
             "--repos",
             "org1/repo1",
             "--output",
-            "custom.md",
+            custom_output,
         ],
     )
 
@@ -355,6 +358,8 @@ def test_main_with_cli_options(tmp_path, monkeypatch, capsys):
         exit_code = main()
 
     assert exit_code == 0
+    # Verify the output file was created in tmp_path, not current directory
+    assert os.path.exists(custom_output)
 
 
 def test_main_missing_config_file(monkeypatch, capsys):

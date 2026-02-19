@@ -1,6 +1,11 @@
 # User-specific
 samples/
 
+# Generated reports (from running CLI or tests)
+*_statistics.md
+custom.md
+custom_report.md
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]
