@@ -40,18 +40,25 @@ Create a YAML configuration file:
 
 ```yaml
 github:
-  base_url: https://github.mycompany.com/api/v3
+  # For public GitHub, use: https://api.github.com
+  # For GitHub Enterprise, use: https://github.mycompany.com/api/v3
+  base_url: https://api.github.com
   token_env: GITHUB_TOKEN
   verify_ssl: true
 
 repositories:
-  - https://github.mycompany.com/org1/repo1
-  - org2/repo2
+  - https://github.com/owner/repo1
+  - owner/repo2
 
 users:
   - username1
   - username2
 ```
+
+**Important:**
+
+- For **public GitHub (github.com)**: use `base_url: https://api.github.com`
+- For **GitHub Enterprise**: use `base_url: https://your-github-server.com/api/v3`
 
 Set your GitHub token as an environment variable:
 

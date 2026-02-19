@@ -119,12 +119,14 @@ The tool must:
 
   ```yaml
   github:
-    base_url: https://github.mycompany.com/api/v3
+    # For public GitHub: https://api.github.com
+    # For GitHub Enterprise: https://github.mycompany.com/api/v3
+    base_url: https://api.github.com
     token_env: GITHUB_TOKEN
     verify_ssl: true
 
   repositories:
-    - https://github.mycompany.com/org1/repo1
+    - https://github.com/owner/repo1
     - org2/repo2
 
   users:

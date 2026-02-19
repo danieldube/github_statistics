@@ -51,8 +51,11 @@ def _assemble_pull_request(
     author = pr_data["user"]["login"]
     created_at = _parse_iso_datetime(pr_data["created_at"])
     state = pr_data["state"]
-    additions = pr_data["additions"]
-    deletions = pr_data["deletions"]
+
+    # Fetch PR details to get additions/deletions (not in list response)
+    pr_details = client.get_pull_request_details(owner, repo, number)
+    additions = pr_details.get("additions", 0)
+    deletions = pr_details.get("deletions", 0)
 
     # Parse optional dates
     closed_at = None
@@ -109,9 +112,13 @@ def _assemble_pull_request(
     reviews_data = client.get_pull_request_reviews(owner, repo, number)
     reviews = []
     for review_data in reviews_data:
+        submitted_at_raw = review_data.get("submitted_at")
+        if not submitted_at_raw:
+            # Skip reviews without submitted_at (e.g. PENDING or draft reviews)
+            continue
         review_event = ReviewEvent(
             reviewer=review_data["user"]["login"],
-            submitted_at=_parse_iso_datetime(review_data["submitted_at"]),
+            submitted_at=_parse_iso_datetime(submitted_at_raw),
             state=review_data["state"],
         )
         reviews.append(review_event)

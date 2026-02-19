@@ -541,3 +541,36 @@ def test_http_client_verify_ssl_false():
     # Should not raise an error
     prs = client.list_pull_requests("owner", "repo")
     assert isinstance(prs, list)
+
+
+def test_http_client_rejects_invalid_github_com_base_url():
+    """Test that client rejects incorrect base_url for public GitHub."""
+    with pytest.raises(ValueError) as exc_info:
+        HttpGitHubClient(
+            base_url="https://github.com/api/v3",
+            token="test-token",
+            verify_ssl=True,
+        )
+
+    assert "Invalid base_url" in str(exc_info.value)
+    assert "https://api.github.com" in str(exc_info.value)
+    assert "For public GitHub" in str(exc_info.value)
+
+
+def test_http_client_accepts_correct_base_urls():
+    """Test that client accepts valid base URLs."""
+    # Public GitHub
+    client1 = HttpGitHubClient(
+        base_url="https://api.github.com",
+        token="test-token",
+        verify_ssl=True,
+    )
+    assert client1.base_url == "https://api.github.com"
+
+    # GitHub Enterprise (correct format)
+    client2 = HttpGitHubClient(
+        base_url="https://github.mycompany.com/api/v3",
+        token="test-token",
+        verify_ssl=True,
+    )
+    assert client2.base_url == "https://github.mycompany.com/api/v3"

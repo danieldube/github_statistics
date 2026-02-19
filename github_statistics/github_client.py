@@ -289,6 +289,15 @@ class HttpGitHubClient(GitHubClient):
             verify_ssl: Whether to verify SSL certificates (default: True).
         """
         self.base_url = base_url.rstrip("/")
+
+        # Validate base_url for common mistakes
+        if "github.com/api/v3" in self.base_url:
+            raise ValueError(
+                f"Invalid base_url: {base_url}\n"
+                f"For public GitHub, use 'https://api.github.com' (not 'https://github.com/api/v3')\n"
+                f"For GitHub Enterprise, use 'https://your-server.com/api/v3'"
+            )
+
         self.token = token
         self.verify_ssl = verify_ssl
         self.session = requests.Session()

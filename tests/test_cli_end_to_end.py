@@ -49,10 +49,15 @@ users:
                     "created_at": "2026-01-01T10:00:00Z",
                     "closed_at": "2026-01-05T10:00:00Z",
                     "merged_at": "2026-01-05T10:00:00Z",
-                    "additions": 10,
-                    "deletions": 5,
                 }
             ]
+
+            # Mock get_pull_request_details to return additions/deletions
+            mock_client.get_pull_request_details.return_value = {
+                "number": 1,
+                "additions": 10,
+                "deletions": 5,
+            }
 
             # Mock other client methods
             mock_client.get_pull_request_commits.return_value = [
@@ -251,8 +256,6 @@ users:
                     "created_at": "2026-01-01T10:00:00Z",
                     "closed_at": "2026-01-03T10:00:00Z",
                     "merged_at": "2026-01-03T10:00:00Z",
-                    "additions": 50,
-                    "deletions": 25,
                 },
                 {
                     "number": 2,
@@ -262,10 +265,18 @@ users:
                     "created_at": "2026-01-05T10:00:00Z",
                     "closed_at": None,
                     "merged_at": None,
-                    "additions": 30,
-                    "deletions": 15,
                 },
             ]
+
+            # Mock get_pull_request_details to return additions/deletions
+            def mock_details(owner, repo, number):
+                details = {
+                    1: {"number": 1, "additions": 50, "deletions": 25},
+                    2: {"number": 2, "additions": 30, "deletions": 15},
+                }
+                return details.get(number, {})
+
+            mock_client.get_pull_request_details.side_effect = mock_details
 
             mock_client.get_pull_request_commits.return_value = [
                 {
