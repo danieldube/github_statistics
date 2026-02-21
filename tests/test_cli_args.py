@@ -291,7 +291,7 @@ def test_main_loads_config(tmp_path, monkeypatch, capsys):
         "github_statistics.github_client.HttpGitHubClient"
     ) as mock_client_class:
         mock_client = MagicMock()
-        mock_client_class.from_env.return_value = mock_client
+        mock_client_class.from_token_or_env.return_value = mock_client
         mock_client.list_pull_requests.return_value = []
 
         # Mock environment variable
@@ -349,7 +349,7 @@ def test_main_with_cli_options(tmp_path, monkeypatch, capsys):
         "github_statistics.github_client.HttpGitHubClient"
     ) as mock_client_class:
         mock_client = MagicMock()
-        mock_client_class.from_env.return_value = mock_client
+        mock_client_class.from_token_or_env.return_value = mock_client
         mock_client.list_pull_requests.return_value = []
 
         # Mock environment variable
