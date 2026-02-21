@@ -4,7 +4,7 @@ Configuration loading and validation.
 
 import re
 from dataclasses import dataclass
-from typing import List
+from typing import List, Optional
 
 import yaml
 
@@ -22,17 +22,20 @@ class Config:
 
     Attributes:
         github_base_url: Base URL for the GitHub API (e.g., https://github.com/api/v3).
-        github_token_env: Name of the environment variable containing the GitHub token.
+        github_api_token: GitHub API token directly from configuration.
+        github_token_env: Name of the environment variable containing
+            the GitHub token fallback.
         github_verify_ssl: Whether to verify SSL certificates.
         repositories: List of repository identifiers in owner/repo format.
         users: List of usernames to analyze.
     """
 
     github_base_url: str
-    github_token_env: str
     github_verify_ssl: bool
     repositories: List[str]
     users: List[str]
+    github_api_token: Optional[str] = None
+    github_token_env: str = "GITHUB_TOKEN"
 
 
 def normalize_repository(repo_identifier: str) -> str:
@@ -110,6 +113,7 @@ def load_config(path: str) -> Config:
     github_base_url = github_config["base_url"]
 
     # Apply defaults for optional github fields
+    github_api_token = github_config.get("api_token")
     github_token_env = github_config.get("token_env", "GITHUB_TOKEN")
     github_verify_ssl = github_config.get("verify_ssl", True)
 
@@ -136,8 +140,9 @@ def load_config(path: str) -> Config:
 
     return Config(
         github_base_url=github_base_url,
-        github_token_env=github_token_env,
         github_verify_ssl=github_verify_ssl,
         repositories=normalized_repos,
         users=users,
+        github_api_token=github_api_token,
+        github_token_env=github_token_env,
     )

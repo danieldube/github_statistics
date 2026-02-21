@@ -20,7 +20,7 @@ def test_cli_end_to_end_creates_report(capsys):
                 """
 github:
   base_url: https://api.github.com
-  token_env: GITHUB_TOKEN
+  api_token: inline-token
   verify_ssl: true
 
 repositories:
@@ -37,7 +37,7 @@ users:
         ) as mock_client_class:
             # Create mock client instance
             mock_client = MagicMock()
-            mock_client_class.from_env.return_value = mock_client
+            mock_client_class.from_token_or_env.return_value = mock_client
 
             # Mock list_pull_requests to return test data
             mock_client.list_pull_requests.return_value = [
@@ -77,11 +77,8 @@ users:
             mock_client.get_issue_comments.return_value = []
             mock_client.get_issue_timeline.return_value = []
 
-            # Mock environment variable for token and run main
-            with (
-                patch.dict(os.environ, {"GITHUB_TOKEN": "fake_token"}),
-                patch("sys.argv", ["github_statistics", config_path]),
-            ):
+            # Run main
+            with patch("sys.argv", ["github_statistics", config_path]):
                 exit_code = main()
 
         # Capture output to help with debugging
@@ -123,7 +120,7 @@ def test_cli_end_to_end_with_custom_output():
                 """
 github:
   base_url: https://api.github.com
-  token_env: GITHUB_TOKEN
+  api_token: inline-token
 
 repositories:
   - org/repo1
@@ -137,22 +134,19 @@ users: []
             "github_statistics.github_client.HttpGitHubClient"
         ) as mock_client_class:
             mock_client = MagicMock()
-            mock_client_class.from_env.return_value = mock_client
+            mock_client_class.from_token_or_env.return_value = mock_client
 
             # Mock minimal PR data
             mock_client.list_pull_requests.return_value = []
 
-            with (
-                patch.dict(os.environ, {"GITHUB_TOKEN": "fake_token"}),
-                patch(
-                    "sys.argv",
-                    [
-                        "github_statistics",
-                        config_path,
-                        "--output",
-                        custom_output,
-                    ],
-                ),
+            with patch(
+                "sys.argv",
+                [
+                    "github_statistics",
+                    config_path,
+                    "--output",
+                    custom_output,
+                ],
             ):
                 exit_code = main()
 
@@ -172,7 +166,7 @@ def test_cli_end_to_end_with_date_filters():
                 """
 github:
   base_url: https://api.github.com
-  token_env: GITHUB_TOKEN
+  api_token: inline-token
 
 repositories:
   - org/repo1
@@ -186,22 +180,19 @@ users: []
             "github_statistics.github_client.HttpGitHubClient"
         ) as mock_client_class:
             mock_client = MagicMock()
-            mock_client_class.from_env.return_value = mock_client
+            mock_client_class.from_token_or_env.return_value = mock_client
             mock_client.list_pull_requests.return_value = []
 
-            with (
-                patch.dict(os.environ, {"GITHUB_TOKEN": "fake_token"}),
-                patch(
-                    "sys.argv",
-                    [
-                        "github_statistics",
-                        config_path,
-                        "--since",
-                        "2026-01-01",
-                        "--until",
-                        "2026-02-01",
-                    ],
-                ),
+            with patch(
+                "sys.argv",
+                [
+                    "github_statistics",
+                    config_path,
+                    "--since",
+                    "2026-01-01",
+                    "--until",
+                    "2026-02-01",
+                ],
             ):
                 exit_code = main()
 
@@ -228,7 +219,7 @@ def test_cli_end_to_end_with_statistics():
                 """
 github:
   base_url: https://api.github.com
-  token_env: GITHUB_TOKEN
+  api_token: inline-token
 
 repositories:
   - org/repo1
@@ -244,7 +235,7 @@ users:
             "github_statistics.github_client.HttpGitHubClient"
         ) as mock_client_class:
             mock_client = MagicMock()
-            mock_client_class.from_env.return_value = mock_client
+            mock_client_class.from_token_or_env.return_value = mock_client
 
             # Mock PR data with reviews
             mock_client.list_pull_requests.return_value = [
@@ -301,10 +292,7 @@ users:
             mock_client.get_issue_comments.return_value = []
             mock_client.get_issue_timeline.return_value = []
 
-            with (
-                patch.dict(os.environ, {"GITHUB_TOKEN": "fake_token"}),
-                patch("sys.argv", ["github_statistics", config_path]),
-            ):
+            with patch("sys.argv", ["github_statistics", config_path]):
                 exit_code = main()
 
         assert exit_code == 0
@@ -344,9 +332,8 @@ users: []
             )
 
         # Ensure the token env var doesn't exist and run main
-        with (
-            patch.dict(os.environ, {}, clear=True),
-            patch("sys.argv", ["github_statistics", config_path]),
+        with patch.dict(os.environ, {}, clear=True), patch(
+            "sys.argv", ["github_statistics", config_path]
         ):
             exit_code = main()
 

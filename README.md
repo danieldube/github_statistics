@@ -43,7 +43,8 @@ github:
   # For public GitHub, use: https://api.github.com
   # For GitHub Enterprise, use: https://github.mycompany.com/api/v3
   base_url: https://api.github.com
-  token_env: GITHUB_TOKEN
+  api_token: your_token_here  # preferred
+  token_env: GITHUB_TOKEN      # optional fallback
   verify_ssl: true
 
 repositories:
@@ -60,7 +61,7 @@ users:
 - For **public GitHub (github.com)**: use `base_url: https://api.github.com`
 - For **GitHub Enterprise**: use `base_url: https://your-github-server.com/api/v3`
 
-Set your GitHub token as an environment variable:
+You can either set `github.api_token` directly in the config or use an environment variable fallback:
 
 ```bash
 export GITHUB_TOKEN=your_token_here

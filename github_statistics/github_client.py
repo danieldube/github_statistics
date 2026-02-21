@@ -333,6 +333,26 @@ class HttpGitHubClient(GitHubClient):
             )
         return cls(base_url=base_url, token=token, verify_ssl=verify_ssl)
 
+    @classmethod
+    def from_token_or_env(
+        cls,
+        base_url: str,
+        api_token: Optional[str] = None,
+        token_env: str = "GITHUB_TOKEN",
+        verify_ssl: bool = True,
+    ) -> "HttpGitHubClient":
+        """Create client from direct token, or fallback to env variable."""
+        if api_token:
+            return cls(
+                base_url=base_url, token=api_token, verify_ssl=verify_ssl
+            )
+
+        return cls.from_env(
+            base_url=base_url,
+            token_env=token_env,
+            verify_ssl=verify_ssl,
+        )
+
     def _get_paginated(
         self, url: str, headers: Optional[Dict[str, str]] = None
     ) -> List[Dict[str, Any]]:

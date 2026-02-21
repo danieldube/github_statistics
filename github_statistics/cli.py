@@ -224,8 +224,9 @@ def main():
         # Instantiate GitHub client
         print("Initializing GitHub client...")
         try:
-            client = HttpGitHubClient.from_env(
+            client = HttpGitHubClient.from_token_or_env(
                 base_url=config.github_base_url,
+                api_token=config.github_api_token,
                 token_env=config.github_token_env,
                 verify_ssl=config.github_verify_ssl,
             )

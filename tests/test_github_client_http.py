@@ -521,6 +521,53 @@ def test_http_client_from_env_missing_token():
 
 
 @responses.activate
+def test_http_client_from_token_or_env_prefers_direct_token():
+    """Test direct config token is used when provided."""
+    os.environ["TEST_GITHUB_TOKEN"] = "env-token-123"
+
+    responses.add(
+        responses.GET,
+        "https://api.github.com/repos/owner/repo/pulls",
+        json=[],
+        status=200,
+    )
+
+    try:
+        client = HttpGitHubClient.from_token_or_env(
+            base_url="https://api.github.com",
+            api_token="config-token-789",
+            token_env="TEST_GITHUB_TOKEN",
+            verify_ssl=True,
+        )
+
+        client.list_pull_requests("owner", "repo")
+
+        assert len(responses.calls) == 1
+        assert (
+            responses.calls[0].request.headers["Authorization"]
+            == "token config-token-789"
+        )
+    finally:
+        del os.environ["TEST_GITHUB_TOKEN"]
+
+
+def test_http_client_from_token_or_env_uses_env_fallback():
+    """Test env fallback is used when direct config token is missing."""
+    os.environ["TEST_GITHUB_TOKEN"] = "env-token-123"
+
+    try:
+        client = HttpGitHubClient.from_token_or_env(
+            base_url="https://api.github.com",
+            api_token=None,
+            token_env="TEST_GITHUB_TOKEN",
+            verify_ssl=True,
+        )
+
+        assert client.token == "env-token-123"
+    finally:
+        del os.environ["TEST_GITHUB_TOKEN"]
+
+
 def test_http_client_verify_ssl_false():
     """Test that verify_ssl=False is respected."""
     responses.add(
