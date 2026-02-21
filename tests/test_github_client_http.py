@@ -568,6 +568,23 @@ def test_http_client_from_token_or_env_uses_env_fallback():
         del os.environ["TEST_GITHUB_TOKEN"]
 
 
+def test_http_client_from_token_or_env_uses_default_env_name():
+    """Test fallback uses GITHUB_TOKEN when token_env is not provided."""
+    os.environ["GITHUB_TOKEN"] = "default-env-token"
+
+    try:
+        client = HttpGitHubClient.from_token_or_env(
+            base_url="https://api.github.com",
+            api_token=None,
+            token_env=None,
+            verify_ssl=True,
+        )
+
+        assert client.token == "default-env-token"
+    finally:
+        del os.environ["GITHUB_TOKEN"]
+
+
 def test_http_client_verify_ssl_false():
     """Test that verify_ssl=False is respected."""
     responses.add(

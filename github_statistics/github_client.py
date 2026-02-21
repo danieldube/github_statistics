@@ -338,7 +338,7 @@ class HttpGitHubClient(GitHubClient):
         cls,
         base_url: str,
         api_token: Optional[str] = None,
-        token_env: str = "GITHUB_TOKEN",
+        token_env: Optional[str] = None,
         verify_ssl: bool = True,
     ) -> "HttpGitHubClient":
         """Create client from direct token, or fallback to env variable."""
@@ -347,9 +347,12 @@ class HttpGitHubClient(GitHubClient):
                 base_url=base_url, token=api_token, verify_ssl=verify_ssl
             )
 
+        resolved_token_env = (
+            token_env if token_env is not None else "GITHUB_TOKEN"
+        )
         return cls.from_env(
             base_url=base_url,
-            token_env=token_env,
+            token_env=resolved_token_env,
             verify_ssl=verify_ssl,
         )
 
