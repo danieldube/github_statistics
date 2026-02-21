@@ -585,6 +585,7 @@ def test_http_client_from_token_or_env_uses_default_env_name():
         del os.environ["GITHUB_TOKEN"]
 
 
+@responses.activate
 def test_http_client_verify_ssl_false():
     """Test that verify_ssl=False is respected."""
     responses.add(
