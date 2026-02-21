@@ -139,15 +139,13 @@ users: []
             # Mock minimal PR data
             mock_client.list_pull_requests.return_value = []
 
-            with patch(
-                "sys.argv",
-                [
-                    "github_statistics",
-                    config_path,
-                    "--output",
-                    custom_output,
-                ],
-            ):
+            argv = [
+                "github_statistics",
+                config_path,
+                "--output",
+                custom_output,
+            ]
+            with patch("sys.argv", argv):
                 exit_code = main()
 
         assert exit_code == 0
@@ -183,17 +181,15 @@ users: []
             mock_client_class.from_token_or_env.return_value = mock_client
             mock_client.list_pull_requests.return_value = []
 
-            with patch(
-                "sys.argv",
-                [
-                    "github_statistics",
-                    config_path,
-                    "--since",
-                    "2026-01-01",
-                    "--until",
-                    "2026-02-01",
-                ],
-            ):
+            argv = [
+                "github_statistics",
+                config_path,
+                "--since",
+                "2026-01-01",
+                "--until",
+                "2026-02-01",
+            ]
+            with patch("sys.argv", argv):
                 exit_code = main()
 
         assert exit_code == 0
