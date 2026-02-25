@@ -6,7 +6,7 @@ import argparse
 import os
 import sys
 from dataclasses import dataclass
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import List, Optional
 
 from github_statistics.config import Config, ConfigValidationError, load_config
@@ -44,6 +44,21 @@ class RunOptions:
     data_protection_override_used: bool = False
 
     @staticmethod
+    def _parse_cli_datetime(value: str, flag_name: str) -> datetime:
+        """Parse CLI datetime and normalize to timezone-aware UTC."""
+        try:
+            parsed = datetime.fromisoformat(value)
+        except ValueError as e:
+            raise ValueError(
+                f"Invalid date format for {flag_name}: '{value}'. Expected ISO format (YYYY-MM-DD)."
+            ) from e
+
+        if parsed.tzinfo is None:
+            return parsed.replace(tzinfo=timezone.utc)
+
+        return parsed.astimezone(timezone.utc)
+
+    @staticmethod
     def from_config_and_args(config: Config, args) -> "RunOptions":
         """
         Create RunOptions from a Config object and parsed CLI arguments.
@@ -63,20 +78,10 @@ class RunOptions:
         until = None
 
         if args.since:
-            try:
-                since = datetime.fromisoformat(args.since)
-            except ValueError as e:
-                raise ValueError(
-                    f"Invalid date format for --since: '{args.since}'. Expected ISO format (YYYY-MM-DD)."
-                ) from e
+            since = RunOptions._parse_cli_datetime(args.since, "--since")
 
         if args.until:
-            try:
-                until = datetime.fromisoformat(args.until)
-            except ValueError as e:
-                raise ValueError(
-                    f"Invalid date format for --until: '{args.until}'. Expected ISO format (YYYY-MM-DD)."
-                ) from e
+            until = RunOptions._parse_cli_datetime(args.until, "--until")
 
         # Handle repository filtering
         # CLI --repos narrows the config repositories (intersection)

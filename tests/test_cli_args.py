@@ -4,7 +4,7 @@ Tests for CLI argument parsing and handling.
 
 import os
 import sys
-from datetime import datetime
+from datetime import datetime, timezone
 
 import pytest
 import yaml
@@ -149,8 +149,26 @@ def test_create_run_options_with_date_range():
     )
     options = RunOptions.from_config_and_args(config, args)
 
-    assert options.since == datetime(2024, 1, 1)
-    assert options.until == datetime(2024, 12, 31)
+    assert options.since == datetime(2024, 1, 1, tzinfo=timezone.utc)
+    assert options.until == datetime(2024, 12, 31, tzinfo=timezone.utc)
+
+
+def test_create_run_options_normalizes_offset_datetime_to_utc():
+    """Test date args with explicit offset are normalized to UTC."""
+    config = Config(
+        github_base_url="https://github.com/api/v3",
+        github_token_env="GITHUB_TOKEN",
+        github_verify_ssl=True,
+        repositories=["org/repo1"],
+        users=["alice"],
+    )
+
+    args = parse_arguments(
+        ["config.yaml", "--since", "2024-01-01T01:00:00+01:00"]
+    )
+    options = RunOptions.from_config_and_args(config, args)
+
+    assert options.since == datetime(2024, 1, 1, 0, 0, 0, tzinfo=timezone.utc)
 
 
 def test_create_run_options_repos_narrows_config():
@@ -514,8 +532,8 @@ def test_run_options_dataclass():
 
     options = RunOptions(
         config=config,
-        since=datetime(2024, 1, 1),
-        until=datetime(2024, 12, 31),
+        since=datetime(2024, 1, 1, tzinfo=timezone.utc),
+        until=datetime(2024, 12, 31, tzinfo=timezone.utc),
         repositories=["org/repo1"],
         users=["alice"],
         output="report.md",
@@ -523,8 +541,8 @@ def test_run_options_dataclass():
     )
 
     assert options.config == config
-    assert options.since == datetime(2024, 1, 1)
-    assert options.until == datetime(2024, 12, 31)
+    assert options.since == datetime(2024, 1, 1, tzinfo=timezone.utc)
+    assert options.until == datetime(2024, 12, 31, tzinfo=timezone.utc)
     assert options.repositories == ["org/repo1"]
     assert options.users == ["alice"]
     assert options.output == "report.md"
