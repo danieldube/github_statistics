@@ -122,7 +122,9 @@ The tool must:
     # For public GitHub: https://api.github.com
     # For GitHub Enterprise: https://github.mycompany.com/api/v3
     base_url: https://api.github.com
-    token_env: GITHUB_TOKEN
+    api_token: ghp_your_token_here
+    # Optional fallback:
+    # token_env: GITHUB_TOKEN
     verify_ssl: true
 
   repositories:

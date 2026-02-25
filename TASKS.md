@@ -45,13 +45,13 @@ This document describes a step-by-step, test-driven plan to implement the `githu
     - `tests/test_config_loading.py`:
         - Test loading a minimal valid `my_config.yaml` with keys:
             - `github.base_url`
-            - `github.token_env`
+            - `github.api_token` (preferred) or `github.token_env` (fallback)
             - `github.verify_ssl`
             - `repositories`
             - `users`
         - Test that repository URLs and `owner/repo` forms are normalized into a canonical `owner/repo` representation.
         - Test that users list is loaded as-is.
-        - Test default behaviors if some optional keys are missing (e.g., default `token_env="GITHUB_TOKEN"`, default `verify_ssl=True`).
+        - Test default behaviors if some optional keys are missing (e.g., `api_token` missing, default `token_env="GITHUB_TOKEN"`, default `verify_ssl=True`).
         - Test validation errors:
             - Missing `github.base_url`.
             - Empty `repositories` list.
@@ -60,6 +60,7 @@ This document describes a step-by-step, test-driven plan to implement the `githu
 
     - Implement `Config` dataclass in `config.py` with fields for:
         - `github_base_url`
+        - `github_api_token`
         - `github_token_env`
         - `github_verify_ssl`
         - `repositories` (normalized to `owner/repo`)
