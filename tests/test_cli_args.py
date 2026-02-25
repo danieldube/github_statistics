@@ -362,6 +362,42 @@ def test_main_with_cli_options(tmp_path, monkeypatch, capsys):
     assert os.path.exists(custom_output)
 
 
+def test_main_prefers_api_token_over_env(tmp_path, monkeypatch):
+    """Test that main() uses api_token directly when configured."""
+    from unittest.mock import MagicMock, patch
+
+    config_data = {
+        "github": {
+            "base_url": "https://github.mycompany.com/api/v3",
+            "api_token": "direct-token",
+        },
+        "repositories": ["org1/repo1"],
+        "users": [],
+    }
+
+    config_file = tmp_path / "test_config.yaml"
+    with open(config_file, "w") as f:
+        yaml.dump(config_data, f)
+
+    monkeypatch.setattr(sys, "argv", ["github_statistics", str(config_file)])
+
+    with patch(
+        "github_statistics.github_client.HttpGitHubClient"
+    ) as mock_client_class:
+        mock_client = MagicMock()
+        mock_client_class.return_value = mock_client
+        mock_client.list_pull_requests.return_value = []
+
+        # Keep environment empty to ensure direct token path is used.
+        monkeypatch.delenv("GITHUB_TOKEN", raising=False)
+
+        exit_code = main()
+
+    assert exit_code == 0
+    mock_client_class.assert_called_once()
+    mock_client_class.from_env.assert_not_called()
+
+
 def test_main_missing_config_file(monkeypatch, capsys):
     """Test that main() exits with error for missing config file."""
     monkeypatch.setattr(

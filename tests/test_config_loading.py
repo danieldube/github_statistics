@@ -35,6 +35,7 @@ def test_load_minimal_valid_config():
         config = load_config(config_path)
 
         assert config.github_base_url == "https://github.mycompany.com/api/v3"
+        assert config.github_api_token is None
         assert config.github_token_env == "GITHUB_TOKEN"  # default
         assert config.github_verify_ssl is True  # default
         assert config.repositories == ["org1/repo1"]
@@ -48,6 +49,7 @@ def test_load_config_with_all_fields():
     config_data = {
         "github": {
             "base_url": "https://github.example.com/api/v3",
+            "api_token": "my-direct-token",
             "token_env": "MY_GITHUB_TOKEN",
             "verify_ssl": False,
         },
@@ -71,6 +73,7 @@ def test_load_config_with_all_fields():
         config = load_config(config_path)
 
         assert config.github_base_url == "https://github.example.com/api/v3"
+        assert config.github_api_token == "my-direct-token"
         assert config.github_token_env == "MY_GITHUB_TOKEN"
         assert config.github_verify_ssl is False
         assert config.repositories == ["owner1/repo1", "owner2/repo2"]
@@ -211,6 +214,33 @@ def test_default_token_env():
     try:
         config = load_config(config_path)
 
+        assert config.github_api_token is None
+        assert config.github_token_env == "GITHUB_TOKEN"
+    finally:
+        os.unlink(config_path)
+
+
+def test_load_config_with_api_token_only():
+    """Test loading a configuration that uses direct api_token auth."""
+    config_data = {
+        "github": {
+            "base_url": "https://github.mycompany.com/api/v3",
+            "api_token": "direct-token-value",
+        },
+        "repositories": ["org1/repo1"],
+        "users": ["user1"],
+    }
+
+    with tempfile.NamedTemporaryFile(
+        mode="w", suffix=".yaml", delete=False
+    ) as f:
+        yaml.dump(config_data, f)
+        config_path = f.name
+
+    try:
+        config = load_config(config_path)
+
+        assert config.github_api_token == "direct-token-value"
         assert config.github_token_env == "GITHUB_TOKEN"
     finally:
         os.unlink(config_path)
@@ -385,6 +415,7 @@ def test_config_dataclass_instantiation():
     """Test that Config dataclass can be instantiated directly."""
     config = Config(
         github_base_url="https://api.github.com",
+        github_api_token="direct-token",
         github_token_env="TOKEN",
         github_verify_ssl=True,
         repositories=["owner/repo"],
@@ -392,6 +423,7 @@ def test_config_dataclass_instantiation():
     )
 
     assert config.github_base_url == "https://api.github.com"
+    assert config.github_api_token == "direct-token"
     assert config.github_token_env == "TOKEN"
     assert config.github_verify_ssl is True
     assert config.repositories == ["owner/repo"]

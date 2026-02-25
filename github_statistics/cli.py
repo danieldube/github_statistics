@@ -224,11 +224,18 @@ def main():
         # Instantiate GitHub client
         print("Initializing GitHub client...")
         try:
-            client = HttpGitHubClient.from_env(
-                base_url=config.github_base_url,
-                token_env=config.github_token_env,
-                verify_ssl=config.github_verify_ssl,
-            )
+            if config.github_api_token:
+                client = HttpGitHubClient(
+                    base_url=config.github_base_url,
+                    token=config.github_api_token,
+                    verify_ssl=config.github_verify_ssl,
+                )
+            else:
+                client = HttpGitHubClient.from_env(
+                    base_url=config.github_base_url,
+                    token_env=config.github_token_env,
+                    verify_ssl=config.github_verify_ssl,
+                )
         except ValueError as e:
             print(
                 f"Error: Failed to initialize GitHub client: {e}",
