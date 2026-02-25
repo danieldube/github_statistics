@@ -2,7 +2,7 @@
 
 ## Project Overview
 
-This project implements a Python command line tool `github_statistics` that computes pull request (PR) statistics from a GitHub (Enterprise/on-prem) instance. The tool reads a YAML configuration file, queries the GitHub REST API for one or more repositories, aggregates PR- and user-level data, computes statistical distributions (min, max, mean, median, count), and outputs a Markdown report.
+This project implements a Python command line tool `github_statistics` that computes pull request (PR) statistics from a GitHub (Enterprise/on-prem) instance. The tool reads a YAML configuration file, queries the GitHub REST API for one or more repositories, aggregates PR data and group-level metrics, computes statistical distributions (min, max, mean, median, count), and outputs a Markdown report.
 
 The tool must:
 
@@ -110,10 +110,10 @@ The tool must:
   - Arguments:
     - `config_path` (YAML file, required).
     - `--since` and `--until` (ISO date strings, optional).
-    - `--users` (comma-separated list, optional).
     - `--repos` (comma-separated list of repo URLs or `owner/repo`, optional).
     - `--output` (output Markdown path, default `<config_basename>_statistics.md`).
     - `--max-workers` (int, default e.g. 4).
+    - `--overwrite-data-protection` (bool, optional override gate).
 
 - Parse YAML configuration with structure similar to:
 
@@ -131,9 +131,13 @@ The tool must:
     - https://github.com/owner/repo1
     - org2/repo2
 
-  users:
-    - danieldube
-    - uidg4302
+  user_groups:
+    team_alpha:
+      - danieldube
+      - uidg4302
+      - alice
+      - bob
+      - carol
   ```
 
 - Normalize repository identifiers to `owner/repo` pairs.

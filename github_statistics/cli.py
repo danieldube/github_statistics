@@ -27,6 +27,8 @@ class RunOptions:
         max_workers: Maximum number of concurrent workers.
         verbose: Whether verbose request logging is enabled.
         request_log_path: Path to the request log file if verbose is enabled.
+        overwrite_data_protection: Whether override flag is set.
+        data_protection_override_used: Whether override was confirmed and used.
     """
 
     config: Config
@@ -38,6 +40,8 @@ class RunOptions:
     max_workers: int
     verbose: bool = False
     request_log_path: Optional[str] = None
+    overwrite_data_protection: bool = False
+    data_protection_override_used: bool = False
 
     @staticmethod
     def from_config_and_args(config: Config, args) -> "RunOptions":
@@ -107,6 +111,7 @@ class RunOptions:
             request_log_path = os.path.join(
                 config_dir, f"{config_basename}_requests.log"
             )
+        overwrite_data_protection = args.overwrite_data_protection
 
         return RunOptions(
             config=config,
@@ -118,6 +123,7 @@ class RunOptions:
             max_workers=args.max_workers,
             verbose=verbose,
             request_log_path=request_log_path,
+            overwrite_data_protection=overwrite_data_protection,
         )
 
 
@@ -181,6 +187,14 @@ def parse_arguments(args: List[str]):
         action="store_true",
         help="Log all GitHub API requests to <config_basename>_requests.log",
     )
+    parser.add_argument(
+        "--overwrite-data-protection",
+        action="store_true",
+        help=(
+            "Override data-protection threshold blocking (requires explicit "
+            "interactive confirmation)"
+        ),
+    )
 
     return parser.parse_args(args)
 
@@ -220,7 +234,7 @@ def main():
         # Print progress
         print("Configuration loaded successfully.")
         print(f"  Repositories: {len(options.repositories)}")
-        print(f"  Users: {len(options.users)}")
+        print(f"  Groups: {len(config.user_groups)}")
         if options.since:
             print(f"  Since: {options.since.date()}")
         if options.until:
@@ -236,8 +250,9 @@ def main():
         from github_statistics.github_client import HttpGitHubClient
         from github_statistics.report_md import render_report
         from github_statistics.stats import (
+            compute_group_stats,
             compute_repository_stats,
-            compute_user_stats,
+            evaluate_data_protection_thresholds,
         )
 
         # Instantiate GitHub client
@@ -276,6 +291,42 @@ def main():
             )
             return 1
 
+        # Enforce data-protection policy
+        data_protection_result = evaluate_data_protection_thresholds(
+            pull_requests=pull_requests,
+            user_groups=config.user_groups,
+            repositories=options.repositories,
+            since=options.since,
+            until=options.until,
+        )
+        if not data_protection_result.passed:
+            print("Data protection threshold violations detected:")
+            for violation in data_protection_result.violations:
+                print(f"  - {violation.message}")
+
+            if not options.overwrite_data_protection:
+                print(
+                    "Error: Data protection policy blocked output. "
+                    "Re-run with --overwrite-data-protection to request "
+                    "explicit override.",
+                    file=sys.stderr,
+                )
+                return 1
+
+            print(
+                "DISCLAIMER: You are overriding mandatory data-protection "
+                "thresholds. Output may reveal sensitive information."
+            )
+            confirmation = input("Type 'y' to continue: ").strip().lower()
+            if confirmation != "y":
+                print(
+                    "Error: Data protection override was not confirmed.",
+                    file=sys.stderr,
+                )
+                return 1
+
+            options.data_protection_override_used = True
+
         # Compute statistics
         print("Computing statistics...")
         try:
@@ -294,11 +345,15 @@ def main():
             else:
                 repos_stats["All repositories"] = repo_stats
 
-            user_stats = compute_user_stats(pull_requests)
+            group_stats = compute_group_stats(
+                pull_requests=pull_requests,
+                user_groups=config.user_groups,
+                active_group_counts=data_protection_result.group_active_counts,
+            )
             print(
                 f"  Computed stats for {len(repos_stats)} repository group(s)"
             )
-            print(f"  Computed stats for {len(user_stats)} user(s)")
+            print(f"  Computed stats for {len(group_stats)} group(s)")
         except Exception as e:
             print(f"Error: Failed to compute statistics: {e}", file=sys.stderr)
             return 1
@@ -306,7 +361,7 @@ def main():
         # Generate report
         print("Generating report...")
         try:
-            report = render_report(repos_stats, user_stats, options)
+            report = render_report(repos_stats, group_stats, options)
         except Exception as e:
             print(f"Error: Failed to generate report: {e}", file=sys.stderr)
             return 1

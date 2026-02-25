@@ -6,7 +6,7 @@ This module generates formatted Markdown reports from computed statistics.
 
 from typing import Dict
 
-from github_statistics.stats import Distribution, RepositoryStats, UserStats
+from github_statistics.stats import Distribution, GroupStats, RepositoryStats
 
 
 def _format_number(value: float, decimals: int = 2) -> str:
@@ -59,14 +59,14 @@ def _format_percentage(value: float) -> str:
 
 def render_report(
     repos_stats: Dict[str, RepositoryStats],
-    users_stats: Dict[str, UserStats],
+    groups_stats: Dict[str, GroupStats],
     options,
 ) -> str:
     """Generate a Markdown report from statistics.
 
     Args:
         repos_stats: Dictionary mapping repository name to RepositoryStats.
-        users_stats: Dictionary mapping username to UserStats.
+        groups_stats: Dictionary mapping group name to GroupStats.
         options: Runtime options containing metadata (since, until, etc.).
 
     Returns:
@@ -77,6 +77,13 @@ def render_report(
     # Title
     lines.append("# GitHub Statistics Report")
     lines.append("")
+
+    if getattr(options, "data_protection_override_used", False):
+        lines.append("> [!WARNING]")
+        lines.append(
+            "> Report generated with data-protection override enabled."
+        )
+        lines.append("")
 
     # Metadata section
     lines.append("## Metadata")
@@ -93,7 +100,7 @@ def render_report(
         lines.append("- **Time range end:** (no filter)")
 
     lines.append(f"- **Repositories analyzed:** {len(options.repositories)}")
-    lines.append(f"- **Users analyzed:** {len(options.users)}")
+    lines.append(f"- **Groups analyzed:** {len(options.config.user_groups)}")
     lines.append("")
 
     # Repositories section
@@ -149,48 +156,51 @@ def render_report(
             )
             lines.append("")
 
-    # Users section
-    lines.append("## Users")
+    # Groups section
+    lines.append("## Groups")
     lines.append("")
 
-    if not users_stats:
-        lines.append("No user statistics available.")
+    if not groups_stats:
+        lines.append("No group statistics available.")
         lines.append("")
     else:
-        # Sort users alphabetically for deterministic output
-        for username in sorted(users_stats.keys()):
-            user_stat: UserStats = users_stats[username]
-            lines.append(f"### {username}")
+        # Sort groups alphabetically for deterministic output
+        for group_name in sorted(groups_stats.keys()):
+            group_stat: GroupStats = groups_stats[group_name]
+            lines.append(f"### {group_name}")
             lines.append("")
+            lines.append(
+                f"- **Active members:** {group_stat.active_member_count} / {group_stat.member_count}"
+            )
 
             # Review timing
             lines.append(
                 f"- **Time between requested and submitting review (hours):** "
-                f"{_format_distribution(user_stat.time_to_submit_review)}"
+                f"{_format_distribution(group_stat.time_to_submit_review)}"
             )
 
             # Approval rates
             lines.append(
                 f"- **Request for changes rate:** "
-                f"{_format_percentage(user_stat.changes_requested_rate)}"
+                f"{_format_percentage(group_stat.changes_requested_rate)}"
             )
             lines.append(
                 f"- **Direct approval rate:** "
-                f"{_format_percentage(user_stat.direct_approval_rate)}"
+                f"{_format_percentage(group_stat.direct_approval_rate)}"
             )
 
             # Code metrics
             lines.append(
                 f"- **Changed lines of code per created PR:** "
-                f"{_format_distribution(user_stat.loc_per_created_pr)}"
+                f"{_format_distribution(group_stat.loc_per_created_pr)}"
             )
             lines.append(
                 f"- **Comments per 100 LOC (as reviewer):** "
-                f"{_format_distribution(user_stat.comments_per_100_loc_as_reviewer)}"
+                f"{_format_distribution(group_stat.comments_per_100_loc_as_reviewer)}"
             )
             lines.append(
                 f"- **Comments per 100 LOC (as author):** "
-                f"{_format_distribution(user_stat.comments_per_100_loc_as_author)}"
+                f"{_format_distribution(group_stat.comments_per_100_loc_as_author)}"
             )
             lines.append("")
 

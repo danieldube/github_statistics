@@ -166,6 +166,7 @@ def _assemble_pull_request(
         reviews=reviews,
         review_requests=review_requests,
         ready_for_review_at=ready_for_review_at,
+        repository=f"{owner}/{repo}",
     )
 
 

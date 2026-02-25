@@ -97,6 +97,7 @@ class PullRequest:
         reviews: List of review events on this PR.
         review_requests: List of review request events.
         ready_for_review_at: Ready-for-review event, if applicable.
+        repository: Repository identifier in owner/repo format.
     """
 
     number: int
@@ -113,3 +114,4 @@ class PullRequest:
     reviews: List[ReviewEvent] = field(default_factory=list)
     review_requests: List[ReviewRequestEvent] = field(default_factory=list)
     ready_for_review_at: Optional[ReadyForReviewEvent] = None
+    repository: str = ""

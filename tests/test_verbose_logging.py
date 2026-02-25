@@ -45,7 +45,9 @@ def test_main_with_verbose_passes_request_log_path(tmp_path, monkeypatch):
             "api_token": "test-token",
         },
         "repositories": ["org/repo1"],
-        "users": [],
+        "user_groups": {
+            "team_alpha": ["alice", "bob", "carol", "dave", "erin"]
+        },
     }
     config_file = tmp_path / "verbose_config.yaml"
     with open(config_file, "w") as f:
@@ -54,7 +56,12 @@ def test_main_with_verbose_passes_request_log_path(tmp_path, monkeypatch):
     monkeypatch.setattr(
         sys,
         "argv",
-        ["github_statistics", str(config_file), "--verbose"],
+        [
+            "github_statistics",
+            str(config_file),
+            "--verbose",
+            "--overwrite-data-protection",
+        ],
     )
 
     with patch(
@@ -64,7 +71,8 @@ def test_main_with_verbose_passes_request_log_path(tmp_path, monkeypatch):
         mock_client_class.return_value = mock_client
         mock_client.list_pull_requests.return_value = []
 
-        exit_code = main()
+        with patch("builtins.input", return_value="y"):
+            exit_code = main()
 
     assert exit_code == 0
     _, kwargs = mock_client_class.call_args

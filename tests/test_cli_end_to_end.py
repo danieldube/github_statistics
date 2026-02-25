@@ -26,8 +26,13 @@ github:
 repositories:
   - org/repo1
 
-users:
-  - alice
+user_groups:
+  team_alpha:
+    - alice
+    - bob
+    - carol
+    - dave
+    - erin
 """
             )
 
@@ -79,7 +84,17 @@ users:
             mock_client.get_issue_timeline.return_value = []
 
             # Run main
-            with (patch("sys.argv", ["github_statistics", config_path]),):
+            with (
+                patch(
+                    "sys.argv",
+                    [
+                        "github_statistics",
+                        config_path,
+                        "--overwrite-data-protection",
+                    ],
+                ),
+                patch("builtins.input", return_value="y"),
+            ):
                 exit_code = main()
 
         # Capture output to help with debugging
@@ -104,9 +119,9 @@ users:
         assert "# GitHub Statistics Report" in content
         assert "## Metadata" in content
         assert "## Repositories" in content
-        assert "## Users" in content
+        assert "## Groups" in content
         assert "org/repo1" in content
-        assert "alice" in content
+        assert "team_alpha" in content
 
 
 def test_cli_end_to_end_with_custom_output():
@@ -126,7 +141,13 @@ github:
 repositories:
   - org/repo1
 
-users: []
+user_groups:
+  team_alpha:
+    - alice
+    - bob
+    - carol
+    - dave
+    - erin
 """
             )
 
@@ -149,8 +170,10 @@ users: []
                         config_path,
                         "--output",
                         custom_output,
+                        "--overwrite-data-protection",
                     ],
                 ),
+                patch("builtins.input", return_value="y"),
             ):
                 exit_code = main()
 
@@ -174,7 +197,13 @@ github:
 repositories:
   - org/repo1
 
-users: []
+user_groups:
+  team_alpha:
+    - alice
+    - bob
+    - carol
+    - dave
+    - erin
 """
             )
 
@@ -198,8 +227,10 @@ users: []
                         "2026-01-01",
                         "--until",
                         "2026-02-01",
+                        "--overwrite-data-protection",
                     ],
                 ),
+                patch("builtins.input", return_value="y"),
             ):
                 exit_code = main()
 
@@ -231,9 +262,13 @@ github:
 repositories:
   - org/repo1
 
-users:
-  - alice
-  - bob
+user_groups:
+  team_alpha:
+    - alice
+    - bob
+    - carol
+    - dave
+    - erin
 """
             )
 
@@ -300,7 +335,17 @@ users:
             mock_client.get_issue_comments.return_value = []
             mock_client.get_issue_timeline.return_value = []
 
-            with (patch("sys.argv", ["github_statistics", config_path]),):
+            with (
+                patch(
+                    "sys.argv",
+                    [
+                        "github_statistics",
+                        config_path,
+                        "--overwrite-data-protection",
+                    ],
+                ),
+                patch("builtins.input", return_value="y"),
+            ):
                 exit_code = main()
 
         assert exit_code == 0
@@ -314,9 +359,8 @@ users:
         assert "Duration merged pull requests" in content
         assert "Duration open pull requests" in content
 
-        # Check for user stats
-        assert "alice" in content
-        assert "bob" in content
+        # Check for group stats
+        assert "team_alpha" in content
 
 
 def test_cli_end_to_end_missing_token():
@@ -335,7 +379,13 @@ github:
 repositories:
   - org/repo1
 
-users: []
+user_groups:
+  team_alpha:
+    - alice
+    - bob
+    - carol
+    - dave
+    - erin
 """
             )
 

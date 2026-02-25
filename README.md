@@ -29,11 +29,11 @@ github_statistics my_config.yaml [options]
 
 - `--since <ISO-DATE>`: Filter PRs created since this date
 - `--until <ISO-DATE>`: Filter PRs created until this date
-- `--users <user1,user2>`: Filter by specific users
 - `--repos <repo1,repo2>`: Filter by specific repositories
 - `--output <path>`: Output file path (default: `<config_basename>_statistics.md`)
 - `--max-workers <N>`: Number of concurrent workers (default: 4)
 - `--verbose`: Log all GitHub API requests to `<config_basename>_requests.log`
+- `--overwrite-data-protection`: Request explicit override when thresholds fail
 
 ## Configuration
 
@@ -54,9 +54,19 @@ repositories:
   - https://github.com/owner/repo1
   - owner/repo2
 
-users:
-  - username1
-  - username2
+user_groups:
+  team_alpha:
+    - alice
+    - bob
+    - carol
+    - dave
+    - erin
+  team_beta:
+    - frank
+    - grace
+    - heidi
+    - ivan
+    - judy
 ```
 
 **Important:**
@@ -75,6 +85,27 @@ If both `api_token` and `token_env` are provided, `api_token` is used.
 When `--verbose` is enabled, the tool writes a request log file containing
 timestamp, HTTP method, and URL for each GitHub API request. Response payloads
 are not logged.
+
+## Data Protection Policy
+
+- No single-user statistics are written to the report.
+- Statistics are computed and rendered for configured user groups only.
+- Every configured group must contain at least 5 members.
+- A member is active if they have at least one commit in the selected
+  evaluation period (`--since`/`--until`).
+- Report generation requires:
+  - at least 5 active members in each configured group,
+  - at least 5 active members in the current repository scope.
+
+If thresholds fail, output is blocked by default.
+
+Override workflow:
+
+1. Run with `--overwrite-data-protection`.
+2. Read the printed disclaimer.
+3. Confirm explicitly by typing `y`.
+
+Without all three conditions, report generation is aborted.
 
 ## Development
 

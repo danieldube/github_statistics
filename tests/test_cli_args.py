@@ -97,6 +97,7 @@ def test_parse_arguments_all_flags():
             "report.md",
             "--max-workers",
             "10",
+            "--overwrite-data-protection",
         ]
     )
 
@@ -107,6 +108,7 @@ def test_parse_arguments_all_flags():
     assert args.repos == "org/repo"
     assert args.output == "report.md"
     assert args.max_workers == 10
+    assert args.overwrite_data_protection is True
 
 
 def test_create_run_options_minimal():
@@ -276,7 +278,9 @@ def test_main_loads_config(tmp_path, monkeypatch, capsys):
             "base_url": "https://github.mycompany.com/api/v3",
         },
         "repositories": ["org1/repo1"],
-        "users": ["user1"],
+        "user_groups": {
+            "team_alpha": ["a", "b", "c", "d", "e"],
+        },
     }
 
     config_file = tmp_path / "test_config.yaml"
@@ -284,7 +288,15 @@ def test_main_loads_config(tmp_path, monkeypatch, capsys):
         yaml.dump(config_data, f)
 
     # Mock sys.argv
-    monkeypatch.setattr(sys, "argv", ["github_statistics", str(config_file)])
+    monkeypatch.setattr(
+        sys,
+        "argv",
+        [
+            "github_statistics",
+            str(config_file),
+            "--overwrite-data-protection",
+        ],
+    )
 
     # Mock the HttpGitHubClient so we don't need a real token
     with patch(
@@ -297,8 +309,9 @@ def test_main_loads_config(tmp_path, monkeypatch, capsys):
         # Mock environment variable
         monkeypatch.setenv("GITHUB_TOKEN", "fake_token")
 
-        # Run main - it should load config and complete successfully
-        exit_code = main()
+        with patch("builtins.input", return_value="y"):
+            # Run main - it should load config and complete successfully
+            exit_code = main()
 
     assert exit_code == 0
     captured = capsys.readouterr()
@@ -314,7 +327,9 @@ def test_main_with_cli_options(tmp_path, monkeypatch, capsys):
             "base_url": "https://github.mycompany.com/api/v3",
         },
         "repositories": ["org1/repo1", "org1/repo2"],
-        "users": ["user1", "user2"],
+        "user_groups": {
+            "team_alpha": ["a", "b", "c", "d", "e"],
+        },
     }
 
     config_file = tmp_path / "test_config.yaml"
@@ -341,6 +356,7 @@ def test_main_with_cli_options(tmp_path, monkeypatch, capsys):
             "org1/repo1",
             "--output",
             custom_output,
+            "--overwrite-data-protection",
         ],
     )
 
@@ -355,7 +371,8 @@ def test_main_with_cli_options(tmp_path, monkeypatch, capsys):
         # Mock environment variable
         monkeypatch.setenv("GITHUB_TOKEN", "fake_token")
 
-        exit_code = main()
+        with patch("builtins.input", return_value="y"):
+            exit_code = main()
 
     assert exit_code == 0
     # Verify the output file was created in tmp_path, not current directory
@@ -372,14 +389,24 @@ def test_main_prefers_api_token_over_env(tmp_path, monkeypatch):
             "api_token": "direct-token",
         },
         "repositories": ["org1/repo1"],
-        "users": [],
+        "user_groups": {
+            "team_alpha": ["a", "b", "c", "d", "e"],
+        },
     }
 
     config_file = tmp_path / "test_config.yaml"
     with open(config_file, "w") as f:
         yaml.dump(config_data, f)
 
-    monkeypatch.setattr(sys, "argv", ["github_statistics", str(config_file)])
+    monkeypatch.setattr(
+        sys,
+        "argv",
+        [
+            "github_statistics",
+            str(config_file),
+            "--overwrite-data-protection",
+        ],
+    )
 
     with patch(
         "github_statistics.github_client.HttpGitHubClient"
@@ -391,7 +418,8 @@ def test_main_prefers_api_token_over_env(tmp_path, monkeypatch):
         # Keep environment empty to ensure direct token path is used.
         monkeypatch.delenv("GITHUB_TOKEN", raising=False)
 
-        exit_code = main()
+        with patch("builtins.input", return_value="y"):
+            exit_code = main()
 
     assert exit_code == 0
     mock_client_class.assert_called_once()
@@ -420,7 +448,9 @@ def test_main_invalid_date_exits_with_error(tmp_path, monkeypatch, capsys):
             "base_url": "https://github.mycompany.com/api/v3",
         },
         "repositories": ["org1/repo1"],
-        "users": ["user1"],
+        "user_groups": {
+            "team_alpha": ["a", "b", "c", "d", "e"],
+        },
     }
 
     config_file = tmp_path / "test_config.yaml"

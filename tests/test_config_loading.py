@@ -1,6 +1,4 @@
-"""
-Tests for configuration loading and validation.
-"""
+"""Tests for configuration loading and validation."""
 
 import os
 import tempfile
@@ -11,18 +9,18 @@ import yaml
 from github_statistics.config import Config, ConfigValidationError, load_config
 
 
+def _valid_groups():
+    return {
+        "team_alpha": ["alice", "bob", "carol", "dave", "erin"],
+    }
+
+
 def test_load_minimal_valid_config():
     """Test loading a minimal valid configuration."""
     config_data = {
-        "github": {
-            "base_url": "https://github.mycompany.com/api/v3",
-        },
-        "repositories": [
-            "org1/repo1",
-        ],
-        "users": [
-            "user1",
-        ],
+        "github": {"base_url": "https://github.mycompany.com/api/v3"},
+        "repositories": ["org1/repo1"],
+        "user_groups": _valid_groups(),
     }
 
     with tempfile.NamedTemporaryFile(
@@ -36,16 +34,16 @@ def test_load_minimal_valid_config():
 
         assert config.github_base_url == "https://github.mycompany.com/api/v3"
         assert config.github_api_token is None
-        assert config.github_token_env == "GITHUB_TOKEN"  # default
-        assert config.github_verify_ssl is True  # default
+        assert config.github_token_env == "GITHUB_TOKEN"
+        assert config.github_verify_ssl is True
         assert config.repositories == ["org1/repo1"]
-        assert config.users == ["user1"]
+        assert config.user_groups == _valid_groups()
     finally:
         os.unlink(config_path)
 
 
 def test_load_config_with_all_fields():
-    """Test loading a configuration with all fields explicitly set."""
+    """Test loading a configuration with all optional fields set."""
     config_data = {
         "github": {
             "base_url": "https://github.example.com/api/v3",
@@ -53,14 +51,11 @@ def test_load_config_with_all_fields():
             "token_env": "MY_GITHUB_TOKEN",
             "verify_ssl": False,
         },
-        "repositories": [
-            "owner1/repo1",
-            "owner2/repo2",
-        ],
-        "users": [
-            "alice",
-            "bob",
-        ],
+        "repositories": ["owner1/repo1", "owner2/repo2"],
+        "user_groups": {
+            "team_alpha": ["alice", "bob", "carol", "dave", "erin"],
+            "team_beta": ["frank", "grace", "heidi", "ivan", "judy"],
+        },
     }
 
     with tempfile.NamedTemporaryFile(
@@ -77,22 +72,21 @@ def test_load_config_with_all_fields():
         assert config.github_token_env == "MY_GITHUB_TOKEN"
         assert config.github_verify_ssl is False
         assert config.repositories == ["owner1/repo1", "owner2/repo2"]
-        assert config.users == ["alice", "bob"]
+        assert sorted(config.user_groups.keys()) == ["team_alpha", "team_beta"]
     finally:
         os.unlink(config_path)
 
 
-def test_normalize_repository_url_https():
-    """Test that HTTPS repository URLs are normalized to owner/repo."""
+def test_normalize_repository_formats():
+    """Test repository normalization for mixed URL formats."""
     config_data = {
-        "github": {
-            "base_url": "https://github.mycompany.com/api/v3",
-        },
+        "github": {"base_url": "https://github.mycompany.com/api/v3"},
         "repositories": [
-            "https://github.mycompany.com/org1/repo1",
-            "https://github.mycompany.com/org2/repo2/",  # trailing slash
+            "org1/repo1",
+            "https://github.mycompany.com/org2/repo2/",
+            "git@github.mycompany.com:org3/repo3.git",
         ],
-        "users": ["user1"],
+        "user_groups": _valid_groups(),
     }
 
     with tempfile.NamedTemporaryFile(
@@ -103,61 +97,6 @@ def test_normalize_repository_url_https():
 
     try:
         config = load_config(config_path)
-
-        assert config.repositories == ["org1/repo1", "org2/repo2"]
-    finally:
-        os.unlink(config_path)
-
-
-def test_normalize_repository_url_git():
-    """Test that git@ style URLs are normalized to owner/repo."""
-    config_data = {
-        "github": {
-            "base_url": "https://github.mycompany.com/api/v3",
-        },
-        "repositories": [
-            "git@github.mycompany.com:org1/repo1.git",
-        ],
-        "users": ["user1"],
-    }
-
-    with tempfile.NamedTemporaryFile(
-        mode="w", suffix=".yaml", delete=False
-    ) as f:
-        yaml.dump(config_data, f)
-        config_path = f.name
-
-    try:
-        config = load_config(config_path)
-
-        assert config.repositories == ["org1/repo1"]
-    finally:
-        os.unlink(config_path)
-
-
-def test_normalize_repository_mixed_formats():
-    """Test that mixed repository formats are all normalized."""
-    config_data = {
-        "github": {
-            "base_url": "https://github.mycompany.com/api/v3",
-        },
-        "repositories": [
-            "org1/repo1",  # already normalized
-            "https://github.mycompany.com/org2/repo2",  # HTTPS URL
-            "git@github.mycompany.com:org3/repo3.git",  # SSH URL
-        ],
-        "users": ["user1"],
-    }
-
-    with tempfile.NamedTemporaryFile(
-        mode="w", suffix=".yaml", delete=False
-    ) as f:
-        yaml.dump(config_data, f)
-        config_path = f.name
-
-    try:
-        config = load_config(config_path)
-
         assert config.repositories == [
             "org1/repo1",
             "org2/repo2",
@@ -167,18 +106,11 @@ def test_normalize_repository_mixed_formats():
         os.unlink(config_path)
 
 
-def test_users_list_loaded_as_is():
-    """Test that the users list is loaded without modification."""
+def test_missing_user_groups_raises_error():
+    """Test that missing user_groups fails validation."""
     config_data = {
-        "github": {
-            "base_url": "https://github.mycompany.com/api/v3",
-        },
-        "repositories": ["org1/repo1"],
-        "users": [
-            "alice123",
-            "bob-456",
-            "charlie_789",
-        ],
+        "github": {"base_url": "https://api.github.com"},
+        "repositories": ["org/repo"],
     }
 
     with tempfile.NamedTemporaryFile(
@@ -188,21 +120,18 @@ def test_users_list_loaded_as_is():
         config_path = f.name
 
     try:
-        config = load_config(config_path)
-
-        assert config.users == ["alice123", "bob-456", "charlie_789"]
+        with pytest.raises(ConfigValidationError, match="user_groups"):
+            load_config(config_path)
     finally:
         os.unlink(config_path)
 
 
-def test_default_token_env():
-    """Test that token_env defaults to GITHUB_TOKEN when not specified."""
+def test_group_with_less_than_five_members_fails():
+    """Test that a group with less than 5 users is rejected."""
     config_data = {
-        "github": {
-            "base_url": "https://github.mycompany.com/api/v3",
-        },
-        "repositories": ["org1/repo1"],
-        "users": ["user1"],
+        "github": {"base_url": "https://api.github.com"},
+        "repositories": ["org/repo"],
+        "user_groups": {"small_team": ["a", "b", "c", "d"]},
     }
 
     with tempfile.NamedTemporaryFile(
@@ -212,23 +141,20 @@ def test_default_token_env():
         config_path = f.name
 
     try:
-        config = load_config(config_path)
-
-        assert config.github_api_token is None
-        assert config.github_token_env == "GITHUB_TOKEN"
+        with pytest.raises(ConfigValidationError, match="at least 5"):
+            load_config(config_path)
     finally:
         os.unlink(config_path)
 
 
-def test_load_config_with_api_token_only():
-    """Test loading a configuration that uses direct api_token auth."""
+def test_group_with_duplicate_members_fails():
+    """Test that duplicate members in a group are rejected."""
     config_data = {
-        "github": {
-            "base_url": "https://github.mycompany.com/api/v3",
-            "api_token": "direct-token-value",
+        "github": {"base_url": "https://api.github.com"},
+        "repositories": ["org/repo"],
+        "user_groups": {
+            "team_alpha": ["alice", "alice", "carol", "dave", "erin"]
         },
-        "repositories": ["org1/repo1"],
-        "users": ["user1"],
     }
 
     with tempfile.NamedTemporaryFile(
@@ -238,22 +164,18 @@ def test_load_config_with_api_token_only():
         config_path = f.name
 
     try:
-        config = load_config(config_path)
-
-        assert config.github_api_token == "direct-token-value"
-        assert config.github_token_env == "GITHUB_TOKEN"
+        with pytest.raises(ConfigValidationError, match="duplicate"):
+            load_config(config_path)
     finally:
         os.unlink(config_path)
 
 
-def test_default_verify_ssl():
-    """Test that verify_ssl defaults to True when not specified."""
+def test_empty_group_name_fails():
+    """Test that empty group names are rejected."""
     config_data = {
-        "github": {
-            "base_url": "https://github.mycompany.com/api/v3",
-        },
-        "repositories": ["org1/repo1"],
-        "users": ["user1"],
+        "github": {"base_url": "https://api.github.com"},
+        "repositories": ["org/repo"],
+        "user_groups": {"": ["alice", "bob", "carol", "dave", "erin"]},
     }
 
     with tempfile.NamedTemporaryFile(
@@ -263,9 +185,8 @@ def test_default_verify_ssl():
         config_path = f.name
 
     try:
-        config = load_config(config_path)
-
-        assert config.github_verify_ssl is True
+        with pytest.raises(ConfigValidationError, match="group name"):
+            load_config(config_path)
     finally:
         os.unlink(config_path)
 
@@ -273,12 +194,9 @@ def test_default_verify_ssl():
 def test_missing_base_url_raises_error():
     """Test that missing github.base_url raises a validation error."""
     config_data = {
-        "github": {
-            # base_url missing
-            "token_env": "GITHUB_TOKEN",
-        },
+        "github": {},
         "repositories": ["org1/repo1"],
-        "users": ["user1"],
+        "user_groups": _valid_groups(),
     }
 
     with tempfile.NamedTemporaryFile(
@@ -294,58 +212,11 @@ def test_missing_base_url_raises_error():
         os.unlink(config_path)
 
 
-def test_missing_github_section_raises_error():
-    """Test that missing github section raises a validation error."""
-    config_data = {
-        # github section missing
-        "repositories": ["org1/repo1"],
-        "users": ["user1"],
-    }
-
-    with tempfile.NamedTemporaryFile(
-        mode="w", suffix=".yaml", delete=False
-    ) as f:
-        yaml.dump(config_data, f)
-        config_path = f.name
-
-    try:
-        with pytest.raises(ConfigValidationError, match="github.*required"):
-            load_config(config_path)
-    finally:
-        os.unlink(config_path)
-
-
-def test_empty_repositories_raises_error():
-    """Test that an empty repositories list raises a validation error."""
-    config_data = {
-        "github": {
-            "base_url": "https://github.mycompany.com/api/v3",
-        },
-        "repositories": [],  # empty
-        "users": ["user1"],
-    }
-
-    with tempfile.NamedTemporaryFile(
-        mode="w", suffix=".yaml", delete=False
-    ) as f:
-        yaml.dump(config_data, f)
-        config_path = f.name
-
-    try:
-        with pytest.raises(ConfigValidationError, match="repositories.*empty"):
-            load_config(config_path)
-    finally:
-        os.unlink(config_path)
-
-
 def test_missing_repositories_raises_error():
     """Test that missing repositories field raises a validation error."""
     config_data = {
-        "github": {
-            "base_url": "https://github.mycompany.com/api/v3",
-        },
-        # repositories missing
-        "users": ["user1"],
+        "github": {"base_url": "https://github.mycompany.com/api/v3"},
+        "user_groups": _valid_groups(),
     }
 
     with tempfile.NamedTemporaryFile(
@@ -363,14 +234,12 @@ def test_missing_repositories_raises_error():
         os.unlink(config_path)
 
 
-def test_empty_users_allowed():
-    """Test that an empty users list is allowed (optional field)."""
+def test_empty_repositories_raises_error():
+    """Test that an empty repositories list raises a validation error."""
     config_data = {
-        "github": {
-            "base_url": "https://github.mycompany.com/api/v3",
-        },
-        "repositories": ["org1/repo1"],
-        "users": [],  # empty is OK
+        "github": {"base_url": "https://github.mycompany.com/api/v3"},
+        "repositories": [],
+        "user_groups": _valid_groups(),
     }
 
     with tempfile.NamedTemporaryFile(
@@ -380,33 +249,8 @@ def test_empty_users_allowed():
         config_path = f.name
 
     try:
-        config = load_config(config_path)
-
-        assert config.users == []
-    finally:
-        os.unlink(config_path)
-
-
-def test_missing_users_defaults_to_empty():
-    """Test that missing users field defaults to an empty list."""
-    config_data = {
-        "github": {
-            "base_url": "https://github.mycompany.com/api/v3",
-        },
-        "repositories": ["org1/repo1"],
-        # users missing
-    }
-
-    with tempfile.NamedTemporaryFile(
-        mode="w", suffix=".yaml", delete=False
-    ) as f:
-        yaml.dump(config_data, f)
-        config_path = f.name
-
-    try:
-        config = load_config(config_path)
-
-        assert config.users == []
+        with pytest.raises(ConfigValidationError, match="repositories.*empty"):
+            load_config(config_path)
     finally:
         os.unlink(config_path)
 
@@ -419,25 +263,24 @@ def test_config_dataclass_instantiation():
         github_token_env="TOKEN",
         github_verify_ssl=True,
         repositories=["owner/repo"],
-        users=["user1"],
+        users=["legacy-user"],
+        user_groups=_valid_groups(),
     )
 
     assert config.github_base_url == "https://api.github.com"
     assert config.github_api_token == "direct-token"
     assert config.github_token_env == "TOKEN"
-    assert config.github_verify_ssl is True
-    assert config.repositories == ["owner/repo"]
-    assert config.users == ["user1"]
+    assert config.user_groups == _valid_groups()
 
 
 def test_file_not_found():
-    """Test that attempting to load a non-existent file raises an appropriate error."""
+    """Test that attempting to load a non-existent file raises an error."""
     with pytest.raises(FileNotFoundError):
         load_config("/nonexistent/path/to/config.yaml")
 
 
 def test_invalid_yaml():
-    """Test that invalid YAML syntax raises an appropriate error."""
+    """Test that invalid YAML syntax raises an error."""
     with tempfile.NamedTemporaryFile(
         mode="w", suffix=".yaml", delete=False
     ) as f:

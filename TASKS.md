@@ -48,9 +48,9 @@ This document describes a step-by-step, test-driven plan to implement the `githu
             - `github.api_token` (preferred) or `github.token_env` (fallback)
             - `github.verify_ssl`
             - `repositories`
-            - `users`
+            - `user_groups`
         - Test that repository URLs and `owner/repo` forms are normalized into a canonical `owner/repo` representation.
-        - Test that users list is loaded as-is.
+        - Test that user groups are loaded as-is.
         - Test default behaviors if some optional keys are missing (e.g., `api_token` missing, default `token_env="GITHUB_TOKEN"`, default `verify_ssl=True`).
         - Test validation errors:
             - Missing `github.base_url`.
@@ -64,7 +64,7 @@ This document describes a step-by-step, test-driven plan to implement the `githu
         - `github_token_env`
         - `github_verify_ssl`
         - `repositories` (normalized to `owner/repo`)
-        - `users`
+        - `user_groups`
     - Implement function `load_config(path: str) -> Config`:
         - Read YAML.
         - Apply defaults and validation.
@@ -80,7 +80,6 @@ This document describes a step-by-step, test-driven plan to implement the `githu
         - Loads configuration using `load_config`.
         - Applies optional flags:
             - `--since` and `--until` correctly parsed as dates.
-            - `--users` overrides or narrows configured users.
             - `--repos` narrows configured repositories.
             - `--output` changes the output file path.
     - Test that invalid date formats or unknown options result in clean error messages and exit codes.
@@ -194,7 +193,7 @@ This document describes a step-by-step, test-driven plan to implement the `githu
             - Single-element distributions (min=max=median=mean).
 
     - `tests/test_stats_user_metrics.py`:
-        - Test per-user metrics:
+        - Test per-group metrics:
             - Time between review request and review submission.
             - Request-for-changes rate and direct-approval rate.
             - LOC per created PR.
@@ -206,7 +205,7 @@ This document describes a step-by-step, test-driven plan to implement the `githu
         - Generic `Distribution` dataclass with fields: `count`, `minimum`, `maximum`, `mean`, `median`.
         - Helper functions to compute distributions from lists of numeric values.
         - Repository-level metric functions receiving lists of `PullRequest` objects.
-        - User-level metric functions keyed by username.
+        - Group-level metric functions keyed by group name.
     - Implement metric logic based on the defined conventions and heuristics; ensure all tests pass.
 
 ## Step 8: Heuristic Metrics (Ready-for-Review and Unrequested Commits)
@@ -235,9 +234,9 @@ This document describes a step-by-step, test-driven plan to implement the `githu
 1. Tests:
 
     - `tests/test_report_md.py`:
-        - Given synthetic `RepoStats` and `UserStats` objects, test that:
+        - Given synthetic `RepoStats` and `GroupStats` objects, test that:
             - `report_md.render_report(...)` returns a Markdown string with:
-                - Sections for repositories and users.
+                - Sections for repositories and groups.
                 - Correct formatting of numeric values and distributions.
                 - Inclusion of time horizon and filter metadata.
             - Missing data (e.g., no PRs, no reviews) is represented clearly (e.g., “no data”).

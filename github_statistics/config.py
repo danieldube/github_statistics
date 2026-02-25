@@ -3,8 +3,8 @@ Configuration loading and validation.
 """
 
 import re
-from dataclasses import dataclass
-from typing import List, Optional
+from dataclasses import dataclass, field
+from typing import Dict, List, Optional
 
 import yaml
 
@@ -26,13 +26,15 @@ class Config:
         github_token_env: Name of the environment variable containing the GitHub token.
         github_verify_ssl: Whether to verify SSL certificates.
         repositories: List of repository identifiers in owner/repo format.
-        users: List of usernames to analyze.
+        users: Legacy users list (deprecated by group-based reporting).
+        user_groups: Named user groups for aggregation and data-protection checks.
     """
 
     github_base_url: str
     github_verify_ssl: bool
     repositories: List[str]
     users: List[str]
+    user_groups: Dict[str, List[str]] = field(default_factory=dict)
     github_api_token: Optional[str] = None
     github_token_env: str = "GITHUB_TOKEN"
 
@@ -132,16 +134,55 @@ def load_config(path: str) -> Config:
     # Normalize repository identifiers
     normalized_repos = [normalize_repository(repo) for repo in repositories]
 
-    # Handle users (optional, defaults to empty list)
+    # Handle users (legacy optional list)
     users = data.get("users", [])
     if not isinstance(users, list):
         raise ConfigValidationError("'users' must be a list")
+
+    # Handle user groups (mandatory for data-protection policy)
+    if "user_groups" not in data:
+        raise ConfigValidationError("'user_groups' is required")
+
+    user_groups = data["user_groups"]
+    if not isinstance(user_groups, dict):
+        raise ConfigValidationError("'user_groups' must be a dictionary")
+
+    if len(user_groups) == 0:
+        raise ConfigValidationError("'user_groups' cannot be empty")
+
+    validated_groups: Dict[str, List[str]] = {}
+    for group_name, members in user_groups.items():
+        if not isinstance(group_name, str) or not group_name.strip():
+            raise ConfigValidationError(
+                "Each user group name must be a non-empty string"
+            )
+        if not isinstance(members, list):
+            raise ConfigValidationError(
+                f"Group '{group_name}' must contain a list of members"
+            )
+        if len(members) < 5:
+            raise ConfigValidationError(
+                f"Group '{group_name}' must contain at least 5 members"
+            )
+        if len(set(members)) != len(members):
+            raise ConfigValidationError(
+                f"Group '{group_name}' contains duplicate members"
+            )
+        if any(
+            not isinstance(member, str) or not member.strip()
+            for member in members
+        ):
+            raise ConfigValidationError(
+                f"Group '{group_name}' contains invalid member names"
+            )
+        validated_groups[group_name] = members
 
     return Config(
         github_base_url=github_base_url,
         github_verify_ssl=github_verify_ssl,
         repositories=normalized_repos,
         users=users,
+        user_groups=validated_groups,
         github_api_token=github_api_token,
         github_token_env=github_token_env,
     )

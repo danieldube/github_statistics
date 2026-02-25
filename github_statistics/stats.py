@@ -9,7 +9,7 @@ Uses Python standard library (statistics, datetime) for calculations.
 import statistics
 from dataclasses import dataclass
 from datetime import datetime, timezone
-from typing import Dict, List, Optional, Tuple
+from typing import Dict, List, Optional, Set, Tuple
 
 from github_statistics.models import PullRequest
 
@@ -80,6 +80,42 @@ class UserStats:
     comments_per_100_loc_as_author: Distribution
 
 
+@dataclass
+class GroupStats:
+    """Group-level statistics."""
+
+    member_count: int
+    active_member_count: int
+    time_to_submit_review: Distribution
+    changes_requested_rate: float
+    direct_approval_rate: float
+    loc_per_created_pr: Distribution
+    comments_per_100_loc_as_reviewer: Distribution
+    comments_per_100_loc_as_author: Distribution
+
+
+@dataclass
+class DataProtectionViolation:
+    """Single data-protection violation."""
+
+    violation_type: str
+    scope: str
+    active_count: int
+    threshold: int
+    message: str
+
+
+@dataclass
+class DataProtectionCheckResult:
+    """Result of data-protection threshold checks."""
+
+    passed: bool
+    group_active_counts: Dict[str, int]
+    repository_scope_active_count: int
+    threshold: int
+    violations: List[DataProtectionViolation]
+
+
 def _compute_distribution(values: List[float]) -> Distribution:
     """Compute a distribution from a list of numeric values.
 
@@ -129,6 +165,103 @@ def _hours_between(start: datetime, end: datetime) -> float:
     """
     delta = end - start
     return delta.total_seconds() / 3600.0  # seconds per hour
+
+
+def _is_in_period(
+    dt: datetime, since: Optional[datetime], until: Optional[datetime]
+) -> bool:
+    """Check whether a datetime is in the inclusive [since, until] period."""
+    if since and dt < since:
+        return False
+    if until and dt > until:
+        return False
+    return True
+
+
+def get_active_users_in_period(
+    pull_requests: List[PullRequest],
+    since: Optional[datetime],
+    until: Optional[datetime],
+    repositories: Optional[List[str]] = None,
+) -> Set[str]:
+    """Return users with at least one commit in the selected period."""
+    repo_filter = set(repositories) if repositories else None
+    active_users: Set[str] = set()
+    for pr in pull_requests:
+        if repo_filter is not None and pr.repository not in repo_filter:
+            continue
+        for commit in pr.commits:
+            if _is_in_period(commit.committed_at, since, until):
+                active_users.add(commit.author)
+    return active_users
+
+
+def compute_active_group_counts(
+    user_groups: Dict[str, List[str]], active_users: Set[str]
+) -> Dict[str, int]:
+    """Compute active-member counts per configured group."""
+    counts: Dict[str, int] = {}
+    for group_name, members in user_groups.items():
+        member_set = set(members)
+        counts[group_name] = len(member_set.intersection(active_users))
+    return counts
+
+
+def evaluate_data_protection_thresholds(
+    pull_requests: List[PullRequest],
+    user_groups: Dict[str, List[str]],
+    repositories: List[str],
+    since: Optional[datetime],
+    until: Optional[datetime],
+    threshold: int = 5,
+) -> DataProtectionCheckResult:
+    """Evaluate group and repository active-member thresholds."""
+    active_users = get_active_users_in_period(
+        pull_requests=pull_requests,
+        since=since,
+        until=until,
+        repositories=repositories,
+    )
+    group_counts = compute_active_group_counts(user_groups, active_users)
+
+    violations: List[DataProtectionViolation] = []
+    for group_name, count in group_counts.items():
+        if count < threshold:
+            violations.append(
+                DataProtectionViolation(
+                    violation_type="group",
+                    scope=group_name,
+                    active_count=count,
+                    threshold=threshold,
+                    message=(
+                        f"Group '{group_name}' has {count} active members, "
+                        f"minimum required is {threshold}"
+                    ),
+                )
+            )
+
+    repo_scope_active_count = len(active_users)
+    if repo_scope_active_count < threshold:
+        violations.append(
+            DataProtectionViolation(
+                violation_type="repository_scope",
+                scope="run_scope",
+                active_count=repo_scope_active_count,
+                threshold=threshold,
+                message=(
+                    f"Repository scope has {repo_scope_active_count} active "
+                    f"members, minimum required is {threshold}"
+                ),
+            )
+        )
+
+    return DataProtectionCheckResult(
+        passed=len(violations) == 0,
+        group_active_counts=group_counts,
+        repository_scope_active_count=repo_scope_active_count,
+        threshold=threshold,
+        violations=violations,
+    )
 
 
 def classify_commits_requested_vs_unrequested(
@@ -359,18 +492,8 @@ def compute_repository_stats(
     )
 
 
-def compute_user_stats(
-    pull_requests: List[PullRequest],
-) -> Dict[str, UserStats]:
-    """Compute user-level statistics from pull requests.
-
-    Args:
-        pull_requests: List of PullRequest objects.
-
-    Returns:
-        Dictionary mapping username to UserStats object.
-    """
-    # Collect data per user
+def _collect_user_data(pull_requests: List[PullRequest]) -> Dict[str, Dict]:
+    """Collect per-user raw values used to derive user and group stats."""
     user_data: Dict[str, Dict] = {}
 
     def _init_user(username: str) -> None:
@@ -469,7 +592,15 @@ def compute_user_stats(
                         comments_per_100
                     )
 
-    # Compute stats for each user
+    return user_data
+
+
+def compute_user_stats(
+    pull_requests: List[PullRequest],
+) -> Dict[str, UserStats]:
+    """Compute user-level statistics from pull requests."""
+    user_data = _collect_user_data(pull_requests)
+
     result: Dict[str, UserStats] = {}
 
     for username, data in user_data.items():
@@ -500,3 +631,70 @@ def compute_user_stats(
         )
 
     return result
+
+
+def compute_group_stats(
+    pull_requests: List[PullRequest],
+    user_groups: Dict[str, List[str]],
+    active_group_counts: Optional[Dict[str, int]] = None,
+) -> Dict[str, GroupStats]:
+    """Compute group-level statistics by aggregating member-level values."""
+    user_data = _collect_user_data(pull_requests)
+    group_stats: Dict[str, GroupStats] = {}
+
+    for group_name, members in user_groups.items():
+        group_review_times: List[float] = []
+        group_loc_values: List[float] = []
+        group_comments_as_reviewer: List[float] = []
+        group_comments_as_author: List[float] = []
+        group_prs_reviewed = 0
+        group_prs_with_changes_requested = 0
+        group_direct_approval_count = 0
+
+        for member in members:
+            member_data = user_data.get(member)
+            if not member_data:
+                continue
+            group_review_times.extend(member_data["review_times"])
+            group_loc_values.extend(member_data["loc_values"])
+            group_comments_as_reviewer.extend(
+                member_data["comments_as_reviewer"]
+            )
+            group_comments_as_author.extend(member_data["comments_as_author"])
+            group_prs_reviewed += member_data["prs_reviewed"]
+            group_prs_with_changes_requested += member_data[
+                "prs_with_changes_requested"
+            ]
+            group_direct_approval_count += member_data["direct_approval_count"]
+
+        if group_prs_reviewed > 0:
+            changes_requested_rate = (
+                group_prs_with_changes_requested / group_prs_reviewed
+            ) * 100.0
+            direct_approval_rate = (
+                group_direct_approval_count / group_prs_reviewed
+            ) * 100.0
+        else:
+            changes_requested_rate = 0.0
+            direct_approval_rate = 0.0
+
+        active_member_count = 0
+        if active_group_counts is not None:
+            active_member_count = active_group_counts.get(group_name, 0)
+
+        group_stats[group_name] = GroupStats(
+            member_count=len(members),
+            active_member_count=active_member_count,
+            time_to_submit_review=_compute_distribution(group_review_times),
+            changes_requested_rate=changes_requested_rate,
+            direct_approval_rate=direct_approval_rate,
+            loc_per_created_pr=_compute_distribution(group_loc_values),
+            comments_per_100_loc_as_reviewer=_compute_distribution(
+                group_comments_as_reviewer
+            ),
+            comments_per_100_loc_as_author=_compute_distribution(
+                group_comments_as_author
+            ),
+        )
+
+    return group_stats
