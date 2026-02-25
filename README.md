@@ -33,6 +33,7 @@ github_statistics my_config.yaml [options]
 - `--repos <repo1,repo2>`: Filter by specific repositories
 - `--output <path>`: Output file path (default: `<config_basename>_statistics.md`)
 - `--max-workers <N>`: Number of concurrent workers (default: 4)
+- `--verbose`: Log all GitHub API requests to `<config_basename>_requests.log`
 
 ## Configuration
 
@@ -70,6 +71,10 @@ export GITHUB_TOKEN=your_token_here
 ```
 
 If both `api_token` and `token_env` are provided, `api_token` is used.
+
+When `--verbose` is enabled, the tool writes a request log file containing
+timestamp, HTTP method, and URL for each GitHub API request. Response payloads
+are not logged.
 
 ## Development
 

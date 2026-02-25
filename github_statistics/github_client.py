@@ -3,7 +3,7 @@
 import os
 import re
 from abc import ABC, abstractmethod
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional
 
 import requests
@@ -279,7 +279,13 @@ class HttpGitHubClient(GitHubClient):
     libraries like responses or requests-mock.
     """
 
-    def __init__(self, base_url: str, token: str, verify_ssl: bool = True):
+    def __init__(
+        self,
+        base_url: str,
+        token: str,
+        verify_ssl: bool = True,
+        request_log_path: Optional[str] = None,
+    ):
         """Initialize HTTP GitHub client.
 
         Args:
@@ -287,6 +293,7 @@ class HttpGitHubClient(GitHubClient):
                      or https://github.enterprise.com/api/v3).
             token: GitHub personal access token or OAuth token.
             verify_ssl: Whether to verify SSL certificates (default: True).
+            request_log_path: Optional file path for logging all requests.
         """
         self.base_url = base_url.rstrip("/")
 
@@ -300,6 +307,7 @@ class HttpGitHubClient(GitHubClient):
 
         self.token = token
         self.verify_ssl = verify_ssl
+        self.request_log_path = request_log_path
         self.session = requests.Session()
         self.session.headers.update(
             {
@@ -310,7 +318,11 @@ class HttpGitHubClient(GitHubClient):
 
     @classmethod
     def from_env(
-        cls, base_url: str, token_env: str, verify_ssl: bool = True
+        cls,
+        base_url: str,
+        token_env: str,
+        verify_ssl: bool = True,
+        request_log_path: Optional[str] = None,
     ) -> "HttpGitHubClient":
         """Create client with token from environment variable.
 
@@ -318,6 +330,7 @@ class HttpGitHubClient(GitHubClient):
             base_url: GitHub API base URL.
             token_env: Name of environment variable containing the token.
             verify_ssl: Whether to verify SSL certificates.
+            request_log_path: Optional file path for logging all requests.
 
         Returns:
             HttpGitHubClient instance.
@@ -331,7 +344,20 @@ class HttpGitHubClient(GitHubClient):
                 f"Environment variable '{token_env}' is not set. "
                 f"Please set it to your GitHub token."
             )
-        return cls(base_url=base_url, token=token, verify_ssl=verify_ssl)
+        return cls(
+            base_url=base_url,
+            token=token,
+            verify_ssl=verify_ssl,
+            request_log_path=request_log_path,
+        )
+
+    def _log_request(self, method: str, url: str) -> None:
+        """Append a request line to the request log file, if enabled."""
+        if not self.request_log_path:
+            return
+        timestamp = datetime.now(timezone.utc).isoformat()
+        with open(self.request_log_path, "a") as log_file:
+            log_file.write(f"{timestamp} {method} {url}\n")
 
     def _get_paginated(
         self, url: str, headers: Optional[Dict[str, str]] = None
@@ -352,6 +378,7 @@ class HttpGitHubClient(GitHubClient):
         current_url: Optional[str] = url
 
         while current_url:
+            self._log_request("GET", current_url)
             response = self.session.get(
                 current_url, headers=headers, verify=self.verify_ssl
             )
@@ -447,6 +474,7 @@ class HttpGitHubClient(GitHubClient):
             Dictionary with PR details.
         """
         url = f"{self.base_url}/repos/{owner}/{repo}/pulls/{number}"
+        self._log_request("GET", url)
         response = self.session.get(url, verify=self.verify_ssl)
         response.raise_for_status()
         result: Dict[str, Any] = response.json()

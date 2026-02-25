@@ -25,6 +25,8 @@ class RunOptions:
         users: List of users to analyze (after CLI filtering/override).
         output: Path to the output Markdown file.
         max_workers: Maximum number of concurrent workers.
+        verbose: Whether verbose request logging is enabled.
+        request_log_path: Path to the request log file if verbose is enabled.
     """
 
     config: Config
@@ -34,6 +36,8 @@ class RunOptions:
     users: List[str]
     output: str
     max_workers: int
+    verbose: bool = False
+    request_log_path: Optional[str] = None
 
     @staticmethod
     def from_config_and_args(config: Config, args) -> "RunOptions":
@@ -87,15 +91,21 @@ class RunOptions:
             users = [user.strip() for user in args.users.split(",")]
 
         # Determine output filename
+        config_dir = os.path.dirname(os.path.abspath(args.config_path))
+        config_basename = os.path.splitext(os.path.basename(args.config_path))[
+            0
+        ]
         output = args.output
         if output is None:
             # Default: <config_basename>_statistics.md in same dir as config
-            config_dir = os.path.dirname(os.path.abspath(args.config_path))
-            config_basename = os.path.splitext(
-                os.path.basename(args.config_path)
-            )[0]
             output = os.path.join(
                 config_dir, f"{config_basename}_statistics.md"
+            )
+        verbose = args.verbose
+        request_log_path = None
+        if verbose:
+            request_log_path = os.path.join(
+                config_dir, f"{config_basename}_requests.log"
             )
 
         return RunOptions(
@@ -106,6 +116,8 @@ class RunOptions:
             users=users,
             output=output,
             max_workers=args.max_workers,
+            verbose=verbose,
+            request_log_path=request_log_path,
         )
 
 
@@ -164,6 +176,11 @@ def parse_arguments(args: List[str]):
         default=4,
         help="Maximum number of concurrent workers (default: 4)",
     )
+    parser.add_argument(
+        "--verbose",
+        action="store_true",
+        help="Log all GitHub API requests to <config_basename>_requests.log",
+    )
 
     return parser.parse_args(args)
 
@@ -210,6 +227,8 @@ def main():
             print(f"  Until: {options.until.date()}")
         print(f"  Output: {options.output}")
         print(f"  Max workers: {options.max_workers}")
+        if options.verbose and options.request_log_path:
+            print(f"  Request log: {options.request_log_path}")
         print()
 
         # Import modules (deferred to avoid import errors in early steps)
@@ -229,12 +248,14 @@ def main():
                     base_url=config.github_base_url,
                     token=config.github_api_token,
                     verify_ssl=config.github_verify_ssl,
+                    request_log_path=options.request_log_path,
                 )
             else:
                 client = HttpGitHubClient.from_env(
                     base_url=config.github_base_url,
                     token_env=config.github_token_env,
                     verify_ssl=config.github_verify_ssl,
+                    request_log_path=options.request_log_path,
                 )
         except ValueError as e:
             print(
