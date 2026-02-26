@@ -173,9 +173,7 @@ def _is_in_period(
     """Check whether a datetime is in the inclusive [since, until] period."""
     if since and dt < since:
         return False
-    if until and dt > until:
-        return False
-    return True
+    return not (until and dt > until)
 
 
 def get_active_users_in_period(

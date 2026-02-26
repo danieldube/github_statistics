@@ -18,7 +18,7 @@ from github_statistics.stats import (
 def _make_pr_with_commits(repo: str, commit_authors_dates):
     commits = [
         CommitInfo(
-            sha="sha-%s" % idx,
+            sha=f"sha-{idx}",
             author=author,
             committed_at=committed_at,
             message="m",
