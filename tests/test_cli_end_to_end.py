@@ -84,17 +84,14 @@ user_groups:
             mock_client.get_issue_timeline.return_value = []
 
             # Run main
-            with (
-                patch(
-                    "sys.argv",
-                    [
-                        "github_statistics",
-                        config_path,
-                        "--overwrite-data-protection",
-                    ],
-                ),
-                patch("builtins.input", return_value="y"),
-            ):
+            with patch(
+                "sys.argv",
+                [
+                    "github_statistics",
+                    config_path,
+                    "--overwrite-data-protection",
+                ],
+            ), patch("builtins.input", return_value="y"):
                 exit_code = main()
 
         # Capture output to help with debugging
@@ -162,19 +159,16 @@ user_groups:
             # Mock minimal PR data
             mock_client.list_pull_requests.return_value = []
 
-            with (
-                patch(
-                    "sys.argv",
-                    [
-                        "github_statistics",
-                        config_path,
-                        "--output",
-                        custom_output,
-                        "--overwrite-data-protection",
-                    ],
-                ),
-                patch("builtins.input", return_value="y"),
-            ):
+            with patch(
+                "sys.argv",
+                [
+                    "github_statistics",
+                    config_path,
+                    "--output",
+                    custom_output,
+                    "--overwrite-data-protection",
+                ],
+            ), patch("builtins.input", return_value="y"):
                 exit_code = main()
 
         assert exit_code == 0
@@ -216,22 +210,18 @@ user_groups:
             mock_client_class.from_env.return_value = mock_client
             mock_client.list_pull_requests.return_value = []
 
-            with (
-                patch.dict(os.environ, {"GITHUB_TOKEN": "fake_token"}),
-                patch(
-                    "sys.argv",
-                    [
-                        "github_statistics",
-                        config_path,
-                        "--since",
-                        "2026-01-01",
-                        "--until",
-                        "2026-02-01",
-                        "--overwrite-data-protection",
-                    ],
-                ),
-                patch("builtins.input", return_value="y"),
-            ):
+            with patch.dict(os.environ, {"GITHUB_TOKEN": "fake_token"}), patch(
+                "sys.argv",
+                [
+                    "github_statistics",
+                    config_path,
+                    "--since",
+                    "2026-01-01",
+                    "--until",
+                    "2026-02-01",
+                    "--overwrite-data-protection",
+                ],
+            ), patch("builtins.input", return_value="y"):
                 exit_code = main()
 
         assert exit_code == 0
@@ -335,17 +325,14 @@ user_groups:
             mock_client.get_issue_comments.return_value = []
             mock_client.get_issue_timeline.return_value = []
 
-            with (
-                patch(
-                    "sys.argv",
-                    [
-                        "github_statistics",
-                        config_path,
-                        "--overwrite-data-protection",
-                    ],
-                ),
-                patch("builtins.input", return_value="y"),
-            ):
+            with patch(
+                "sys.argv",
+                [
+                    "github_statistics",
+                    config_path,
+                    "--overwrite-data-protection",
+                ],
+            ), patch("builtins.input", return_value="y"):
                 exit_code = main()
 
         assert exit_code == 0
@@ -390,9 +377,8 @@ user_groups:
             )
 
         # Ensure the token env var doesn't exist and run main
-        with (
-            patch.dict(os.environ, {}, clear=True),
-            patch("sys.argv", ["github_statistics", config_path]),
+        with patch.dict(os.environ, {}, clear=True), patch(
+            "sys.argv", ["github_statistics", config_path]
         ):
             exit_code = main()
 

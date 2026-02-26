@@ -187,12 +187,9 @@ def test_cli_violation_with_override_but_not_confirmed_fails(
         ],
     )
 
-    with (
-        patch("builtins.input", return_value="n"),
-        patch(
-            "github_statistics.github_client.HttpGitHubClient"
-        ) as mock_client_class,
-    ):
+    with patch("builtins.input", return_value="n"), patch(
+        "github_statistics.github_client.HttpGitHubClient"
+    ) as mock_client_class:
         mock_client = MagicMock()
         mock_client_class.return_value = mock_client
         mock_client.list_pull_requests.return_value = []
@@ -225,12 +222,9 @@ def test_cli_violation_with_override_and_confirmed_y_proceeds(
         ],
     )
 
-    with (
-        patch("builtins.input", return_value="y"),
-        patch(
-            "github_statistics.github_client.HttpGitHubClient"
-        ) as mock_client_class,
-    ):
+    with patch("builtins.input", return_value="y"), patch(
+        "github_statistics.github_client.HttpGitHubClient"
+    ) as mock_client_class:
         mock_client = MagicMock()
         mock_client_class.return_value = mock_client
         mock_client.list_pull_requests.return_value = []
